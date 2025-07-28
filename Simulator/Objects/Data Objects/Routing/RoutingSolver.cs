@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using Google.OrTools.ConstraintSolver;
 using Google.Protobuf.WellKnownTypes;
 using Simulator.Objects.Data_Objects.Simulation_Objects;
+using Simulator.MySearchAlgorithm;
 
 namespace Simulator.Objects.Data_Objects.Routing
 {
@@ -92,7 +93,7 @@ namespace Simulator.Objects.Data_Objects.Routing
                         {
                             if (startIndex != i)
                             {
-                                RoutingModel.AddDisjunction(new long[] {RoutingIndexManager.NodeToIndex(i)}, penalty);//adds disjunction to all stop besides start stops
+                                RoutingModel.AddDisjunction(new long[] { RoutingIndexManager.NodeToIndex(i) }, penalty);//adds disjunction to all stop besides start stops
                             }
                         }
                     }
@@ -140,7 +141,7 @@ namespace Simulator.Objects.Data_Objects.Routing
                     }
                 }
 
-                
+
                 // Add time window constraints for each vehicle start node, and add to assignment the slack and transit vars for both dimensions
                 for (int i = 0; i < DataModel.VehicleCapacities.Length; i++)
                 {
@@ -160,11 +161,11 @@ namespace Simulator.Objects.Data_Objects.Routing
                     {
                         vehicleIndex = DataModel.CustomersVehicle[i]; //gets the vehicle index
                     }
-                    var pickupIndex = vehicleIndex == -1 ? RoutingIndexManager.NodeToIndex(DataModel.PickupsDeliveries[i][0]):RoutingModel.Start(vehicleIndex);//if is a customer inside a vehicle the pickupIndex will be the vehicle startIndex, otherwise its the customers real pickupIndex
+                    var pickupIndex = vehicleIndex == -1 ? RoutingIndexManager.NodeToIndex(DataModel.PickupsDeliveries[i][0]) : RoutingModel.Start(vehicleIndex);//if is a customer inside a vehicle the pickupIndex will be the vehicle startIndex, otherwise its the customers real pickupIndex
                     var deliveryIndex = RoutingIndexManager.NodeToIndex(DataModel.PickupsDeliveries[i][1]);
                     var rideTime = DataModel.CustomersRideTimes[i];
-                    var directRideTimeDuration = DataModel.TravelTimes[pickupIndex,DataModel.PickupsDeliveries[i][1]];
-                    var realRideTimeDuration = rideTime+(timeDimension.CumulVar(deliveryIndex) - timeDimension.CumulVar(pickupIndex));//adds the currentRideTime of the customer and subtracts cumulative value of the ride time of the delivery index with the current one of the current index to get the real ride time duration
+                    var directRideTimeDuration = DataModel.TravelTimes[pickupIndex, DataModel.PickupsDeliveries[i][1]];
+                    var realRideTimeDuration = rideTime + (timeDimension.CumulVar(deliveryIndex) - timeDimension.CumulVar(pickupIndex));//adds the currentRideTime of the customer and subtracts cumulative value of the ride time of the delivery index with the current one of the current index to get the real ride time duration
                     solver.Add(realRideTimeDuration < directRideTimeDuration + DataModel.MaxCustomerRideTime);//adds the constraint so that the current ride time duration does not exceed the directRideTimeDuration + maxCustomerRideTimeDuration
                 }
                 //Add precedence and same vehicle Constraints
@@ -194,7 +195,7 @@ namespace Simulator.Objects.Data_Objects.Routing
                     }
                 }
 
-                for (int i = 0; i < DataModel.VehicleCapacities.Length;i++)
+                for (int i = 0; i < DataModel.VehicleCapacities.Length; i++)
                 {
                     RoutingModel.AddVariableMinimizedByFinalizer(
                         timeDimension.CumulVar(RoutingModel.Start(i)));
@@ -203,7 +204,7 @@ namespace Simulator.Objects.Data_Objects.Routing
                 }
             }
 
-           
+
 
         }
 
@@ -250,7 +251,7 @@ namespace Simulator.Objects.Data_Objects.Routing
                 Console.WriteLine("Total time of all routes: {0}min", totalTime);
                 Console.WriteLine("Total Load of all routes: " + totalLoad + "min");
                 Console.WriteLine("Avg route Total Time:{0}", totalTime / DataModel.VehicleCapacities.Length);
-         
+
             }
             else
             {
@@ -273,6 +274,14 @@ namespace Simulator.Objects.Data_Objects.Routing
         public Assignment TryGetSolution(RoutingSearchParameters searchParameters)
         {
             Assignment solution = null;
+            RandomAlgo my_random_solver = new RandomAlgo();
+            GA gaSolver = new GA();
+            NSGA nsgaSolver = new NSGA();
+
+            MyAssignment mysolution = null;
+            MyAssignment mysolution2 = null;
+            MyAssignment mysolution3 = null;
+
             if (searchParameters == null)
             {
                 searchParameters = GetDefaultSearchParameters();
@@ -286,6 +295,11 @@ namespace Simulator.Objects.Data_Objects.Routing
                 try
                 {
                     solution = RoutingModel.SolveWithParameters(searchParameters);
+                    mysolution = my_random_solver.TryGetSolution(RoutingModel, RoutingIndexManager, DataModel);
+                    mysolution2 = gaSolver.TryGetSolution(RoutingModel, RoutingIndexManager, DataModel);
+                    mysolution3 = nsgaSolver.TryGetSolution(RoutingModel, RoutingIndexManager, DataModel);
+
+
                 }
                 catch (Exception)
                 {
@@ -308,25 +322,40 @@ namespace Simulator.Objects.Data_Objects.Routing
             int solverStatus = RoutingModel.GetStatus();
             switch (solverStatus)
             {
-                case 0: status = "ROUTING_NOT_SOLVED"; //Problem not solved yet
+                case 0:
+                    status = "ROUTING_NOT_SOLVED"; //Problem not solved yet
                     break;
-                case 1: status = "ROUTING_SUCCESS"; //Problem solved successfully.
+                case 1:
+                    status = "ROUTING_SUCCESS"; //Problem solved successfully.
                     break;
-                case 2: status = "ROUTING_FAIL"; //No solution found to the problem
+                case 2:
+                    status = "ROUTING_FAIL"; //No solution found to the problem
                     break;
-                case 3: status = "ROUTING_FAIL_TIMEOUT"; //Time limit reached before finding the solution
+                case 3:
+                    status = "ROUTING_FAIL_TIMEOUT"; //Time limit reached before finding the solution
                     break;
-                case 4: status = "ROUTING_INVALID"; //Model, parameter or flags are not valid
+                case 4:
+                    status = "ROUTING_INVALID"; //Model, parameter or flags are not valid
                     break;
             }
             return status;
         }
-        
+
         public RoutingSolutionObject GetSolutionObject(Assignment solution)
         {
             RoutingSolutionObject routingSolutionObject = null;
-            if (solution != null) {
-                routingSolutionObject = new RoutingSolutionObject(this,solution);
+            if (solution != null)
+            {
+                routingSolutionObject = new RoutingSolutionObject(this, solution);
+            }
+            return routingSolutionObject;
+        }
+        public RoutingSolutionObject GetMySolutionObject(MyAssignment solution)
+        {
+            RoutingSolutionObject routingSolutionObject = null;
+            if (solution != null)
+            {
+                routingSolutionObject = new RoutingSolutionObject(this, solution);
             }
             return routingSolutionObject;
         }
@@ -350,7 +379,7 @@ namespace Simulator.Objects.Data_Objects.Routing
                     long currentLoad = 0;
                     long routeSlackTime = 0;
                     long routeTransitTime = 0;
-                    printableList.Add("Vehicle "+DataModel.IndexManager.Vehicles[i].Id+" Route:");
+                    printableList.Add("Vehicle " + DataModel.IndexManager.Vehicles[i].Id + " Route:");
                     var index = RoutingModel.Start(i);
                     string concatenatedString = "";
                     while (RoutingModel.IsEnd(index) == false)
@@ -381,30 +410,30 @@ namespace Simulator.Objects.Data_Objects.Routing
                         }
                         else
                         {
-                            tw2 = (tw1 == tw2 && slack1 != 0) ? tw1 + transit + slack1:tw2;
+                            tw2 = (tw1 == tw2 && slack1 != 0) ? tw1 + transit + slack1 : tw2;
                         }
 
                         //Console.WriteLine(DataModel.IndexManager.GetStop(nodeIndex) + " TimeWindow ("+tw1+","+tw2+") Transit("+transit+")");
-                        double timeToTravel = solution.Value(timeTransitVar)-solution.Value(timeSlackVar);
+                        double timeToTravel = solution.Value(timeTransitVar) - solution.Value(timeSlackVar);
                         routeSlackTime += solution.Value(timeSlackVar);
                         routeTransitTime += solution.Value(timeTransitVar);
                         currentLoad = solution.Value(capacityCumulVar) + solution.Value(capacityTransitVar);
-                        
-                        var distance = Calculator.TravelTimeToDistance((int)timeToTravel,DataModel.IndexManager.Vehicles[i].Speed);
+
+                        var distance = Calculator.TravelTimeToDistance((int)timeToTravel, DataModel.IndexManager.Vehicles[i].Speed);
                         if (DataModel.IndexManager.GetStop(nodeIndex) != null)
                         {
                             concatenatedString += DataModel.IndexManager.GetStop(nodeIndex) + "(T:{" + tw1 + ";" + tw2 + "}; L:" + currentLoad + ") --[" + Math.Round(distance) + "m = " + timeToTravel + " secs]--> ";
 
                         }
                         if (DataModel.IndexManager.GetStop(RoutingIndexManager.IndexToNode(index)) == null) //if the next stop is null finish printing
-                        {                 
+                        {
                             concatenatedString += DataModel.IndexManager.GetStop(nodeIndex) + "(T:{" +
                                                   tw1 + ";" + tw2 + "}; L:" +
                                                   currentLoad + ")";
                         }
 
                         routeDistance += (long)distance;
-                        totalLoad += solution.Value(capacityTransitVar) > 0 ? solution.Value(capacityTransitVar):0;
+                        totalLoad += solution.Value(capacityTransitVar) > 0 ? solution.Value(capacityTransitVar) : 0;
                         index = solution.Value(RoutingModel.NextVar(index));
                     }
                     nodeIndex = RoutingIndexManager.IndexToNode(index);
@@ -412,7 +441,7 @@ namespace Simulator.Objects.Data_Objects.Routing
                     var endTimeVar = timeDim.CumulVar(index);
                     currentLoad = solution.Value(capacityDim.CumulVar(index));
                     if (DataModel.IndexManager.GetStop(nodeIndex) != null)//if current stop (last stop of current route) is not null
-                    {                        
+                    {
                         concatenatedString += DataModel.IndexManager.GetStop(nodeIndex) + "(T:{" + solution.Min(endTimeVar) + ";" + solution.Max(endTimeVar) + "}; L:" + currentLoad + ")";
                     }
 
@@ -420,14 +449,14 @@ namespace Simulator.Objects.Data_Objects.Routing
                     printableList.Add(concatenatedString);
                     //long routeDistance = (long)Calculator.TravelTimeToDistance((int)solution.Min(endPickupDeliveryVar), DataModel.VehicleSpeed); //Gets the route distance which is the actual cumulative value of the distance dimension at the last stop of the route
                     var routeTime = solution.Max(endTimeVar) - solution.Min(startTimeVar);
-                    printableList.Add("Route Total Time: "+ TimeSpan.FromSeconds(routeTime).TotalMinutes + " minutes");
-                    printableList.Add("Route Distance: "+ routeDistance+" meters");
-                    printableList.Add("Route distance (using cumul var):"+ Calculator.TravelTimeToDistance((int)solution.Min(endTimeVar), DataModel.IndexManager.Vehicles[i].Speed));//NEED TO CHANGE
+                    printableList.Add("Route Total Time: " + TimeSpan.FromSeconds(routeTime).TotalMinutes + " minutes");
+                    printableList.Add("Route Distance: " + routeDistance + " meters");
+                    printableList.Add("Route distance (using cumul var):" + Calculator.TravelTimeToDistance((int)solution.Min(endTimeVar), DataModel.IndexManager.Vehicles[i].Speed));//NEED TO CHANGE
                     printableList.Add("Route Total Load:" + totalLoad);
                     printableList.Add("Route customers served: " + solutionObject.GetVehicleCustomers(solutionObject.IndexToVehicle(i)).Count);
-                    printableList.Add("Route Total Transit Time: "+routeTransitTime);
-                    printableList.Add("Route Total Slack Time: "+routeSlackTime);
-                    printableList.Add("Average Route Transit time: "+routeTransitTime/ solutionObject.GetVehicleStops(solutionObject.IndexToVehicle(i)).Count); //total route transit time/numberofstops visited
+                    printableList.Add("Route Total Transit Time: " + routeTransitTime);
+                    printableList.Add("Route Total Slack Time: " + routeSlackTime);
+                    printableList.Add("Average Route Transit time: " + routeTransitTime / solutionObject.GetVehicleStops(solutionObject.IndexToVehicle(i)).Count); //total route transit time/numberofstops visited
                     if (solutionObject.GetVehicleCustomers(solutionObject.IndexToVehicle(i)).Count > 0)
                     {
                         printableList.Add("Average distance traveled per Customer request: " +
@@ -442,12 +471,12 @@ namespace Simulator.Objects.Data_Objects.Routing
                 }
 
 
-                printableList.Add("Total time of all routes: "+ TimeSpan.FromSeconds(totalTime).TotalMinutes+" minutes");
+                printableList.Add("Total time of all routes: " + TimeSpan.FromSeconds(totalTime).TotalMinutes + " minutes");
                 printableList.Add("Solution object time: " + solutionObject.TotalTimeInSeconds);
-                printableList.Add("Total distance of all routes: "+ totalDistance+" meters");
+                printableList.Add("Total distance of all routes: " + totalDistance + " meters");
                 printableList.Add("Total Load of all routes: " + totalLoad + " customers");
-                printableList.Add("Total customers served: "+ solutionObject.CustomerNumber+"/"+ DataModel.IndexManager.Customers.Count);
-                printableList.Add("Total vehicles used: "+solutionObject.TotalVehiclesUsed + "/"+DataModel.IndexManager.Vehicles.Count);
+                printableList.Add("Total customers served: " + solutionObject.CustomerNumber + "/" + DataModel.IndexManager.Customers.Count);
+                printableList.Add("Total vehicles used: " + solutionObject.TotalVehiclesUsed + "/" + DataModel.IndexManager.Vehicles.Count);
                 printableList.Add("Solution Objective value: " + solution.ObjectiveValue());
             }
             else
@@ -469,13 +498,39 @@ namespace Simulator.Objects.Data_Objects.Routing
                 Console.WriteLine("T - Time Windows");
                 Console.WriteLine("L - Load of the vehicle");
                 Console.WriteLine("Maximum Upper Bound limit:" + TimeSpan.FromSeconds(MaximumDeliveryDelayTime).TotalMinutes + " minutes");
-                Console.WriteLine("Maximum Customer Ride Time Duration: "+TimeSpan.FromSeconds(DataModel.MaxCustomerRideTime).TotalMinutes + " minutes");
+                Console.WriteLine("Maximum Customer Ride Time Duration: " + TimeSpan.FromSeconds(DataModel.MaxCustomerRideTime).TotalMinutes + " minutes");
                 var printableList = GetSolutionPrintableList(solution);
                 Console.WriteLine("Solution:");
                 foreach (var stringToBePrinted in printableList)
                 {
                     Console.WriteLine(stringToBePrinted);
                 }
+                Console.WriteLine("--------------------------------");
+            }
+            else
+            {
+                throw new ArgumentNullException("Solution is null");
+            }
+        }
+        public void PrintSolution(MyAssignment solution)
+        {
+
+            if (solution != null)
+            {
+
+                Console.WriteLine("--------------------------------");
+                Console.WriteLine("| PDTW Solver MySolution Printer |");
+                Console.WriteLine("--------------------------------");
+                Console.WriteLine("T - Time Windows");
+                Console.WriteLine("L - Load of the vehicle");
+                Console.WriteLine("Maximum Upper Bound limit:" + TimeSpan.FromSeconds(MaximumDeliveryDelayTime).TotalMinutes + " minutes");
+                Console.WriteLine("Maximum Customer Ride Time Duration: " + TimeSpan.FromSeconds(DataModel.MaxCustomerRideTime).TotalMinutes + " minutes");
+                //var printableList = GetSolutionPrintableList(solution);
+                Console.WriteLine("Solution:");
+                //foreach (var stringToBePrinted in printableList)
+                //{
+                //    Console.WriteLine(stringToBePrinted);
+                //}
                 Console.WriteLine("--------------------------------");
             }
             else

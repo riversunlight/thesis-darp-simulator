@@ -8,7 +8,7 @@ namespace Simulator.Objects.Data_Objects.Simulation_Objects
     {
         private static int nextId;
         public int Id { get; internal set; }
-        public long RideTime => RealTimeWindow[1]-RealTimeWindow[0];
+        public long RideTime => RealTimeWindow[1] - RealTimeWindow[0];
 
         public Stop[] PickupDelivery;
 
@@ -34,7 +34,7 @@ namespace Simulator.Objects.Data_Objects.Simulation_Objects
             RequestTime = requestTime;
             IsDynamic = false;
             Init();
-         
+
         }
 
 
@@ -47,6 +47,15 @@ namespace Simulator.Objects.Data_Objects.Simulation_Objects
             Init();
         }
 
+        public Customer(Customer customer)
+        {
+            Id = customer.Id;
+            PickupDelivery = customer.PickupDelivery;
+            DesiredTimeWindow = customer.DesiredTimeWindow;
+            RequestTime = customer.RequestTime;
+            Init();
+        }
+
         public void Init()
         {
             Id = Interlocked.Increment(ref nextId);
@@ -56,7 +65,7 @@ namespace Simulator.Objects.Data_Objects.Simulation_Objects
         }
         public override string ToString()
         {
-            return "Customer "+Id+" ";
+            return "Customer " + Id + " ";
         }
 
         public void PrintPickupDelivery()
@@ -64,7 +73,7 @@ namespace Simulator.Objects.Data_Objects.Simulation_Objects
             string stringToBePrinted = this.ToString() + " - PickupDelivery: [" + PickupDelivery[0] + " -> " + PickupDelivery[1] + "]";
             if (DesiredTimeWindow != null)
             {
-                stringToBePrinted = stringToBePrinted + " - TimeWindows (in seconds): {"+DesiredTimeWindow[0]+","+DesiredTimeWindow[1]+"}";
+                stringToBePrinted = stringToBePrinted + " - TimeWindows (in seconds): {" + DesiredTimeWindow[0] + "," + DesiredTimeWindow[1] + "}";
             }
             Console.WriteLine(stringToBePrinted);
         }
