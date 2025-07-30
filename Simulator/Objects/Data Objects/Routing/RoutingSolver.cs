@@ -294,10 +294,10 @@ namespace Simulator.Objects.Data_Objects.Routing
                 //Get the solution of the problem
                 try
                 {
-                    solution = RoutingModel.SolveWithParameters(searchParameters);
                     mysolution = my_random_solver.TryGetSolution(RoutingModel, RoutingIndexManager, DataModel);
                     mysolution2 = gaSolver.TryGetSolution(RoutingModel, RoutingIndexManager, DataModel);
                     mysolution3 = nsgaSolver.TryGetSolution(RoutingModel, RoutingIndexManager, DataModel);
+                    solution = RoutingModel.SolveWithParameters(searchParameters);
 
 
                 }

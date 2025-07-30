@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.IO;
 using Simulator.MySearchAlgorithm;
 using Simulator.Objects.Data_Objects.Routing;
 using Simulator.Objects.Data_Objects.Simulation_Data_Objects;
 using Simulator.Objects.Data_Objects.Simulation_Objects;
+using System.Runtime.Versioning;
 
 namespace Simulator.MySearchAlgorithm
 {
@@ -17,6 +19,8 @@ namespace Simulator.MySearchAlgorithm
         public List<Customer> Customers;
         public List<RouteStep> LastStep;
         public int[] gene;
+        public int myEvalCnt;
+        public static int evalCnt;
         public MyAssignment(int customer_num)
         {
             VehicleRoutes = new Dictionary<int, List<RouteStep>>();
@@ -25,6 +29,11 @@ namespace Simulator.MySearchAlgorithm
             Customers = new List<Customer>();
             LastStep  = new List<RouteStep>();
             gene = new int[customer_num * 2];
+            myEvalCnt = -1;
+        }
+        public void resetEvalCnt()
+        {
+            evalCnt = 0;
         }
 
         // convert solution'sIndex to Index of List<Stop> Stops
@@ -47,6 +56,8 @@ namespace Simulator.MySearchAlgorithm
 
         public void Simulate(RoutingDataModel DataModel)
         {
+            evalCnt++;
+            myEvalCnt = evalCnt;
             Customers = new List<Customer>();
             foreach (var customer in DataModel.IndexManager.Customers)
             {
@@ -131,6 +142,104 @@ namespace Simulator.MySearchAlgorithm
                 res += Customers[customerId].DelayTime;
             }
             return res;
+        }
+
+        // アランニャ先生からアドバイスいただいた内容
+        public void VisualTextSimulateResult(int Id)
+        {
+            string path = "simulate" + Id + ".txt";
+            string path2 = "simulate" + Id + ".csv";
+
+            using (StreamWriter writer = new StreamWriter(path, append: false)) // append: true で追記
+            {
+
+                writer.WriteLine("Vehicle Route Info:");
+
+                for (int vehicleId = 0; vehicleId < VehicleRoutes.Count; vehicleId++)
+                {
+                    writer.WriteLine("VehicleID:" + vehicleId);
+                    List<RouteStep> routeSteps = VehicleRoutes[vehicleId];
+
+                    for (int stepId = 0; stepId < routeSteps.Count; stepId++)
+                    {
+                        RouteStep currentStep = routeSteps[stepId];
+                        writer.WriteLine("stepID:" + stepId);
+                        writer.WriteLine("stopID:" + Customers[currentStep.RequestID].PickupDelivery[currentStep.PickupOrDelivery].Id);
+                        writer.WriteLine("requestID:" + currentStep.RequestID);
+                        writer.WriteLine("PickupOrDelivery:" + currentStep.PickupOrDelivery);
+                        writer.WriteLine("TimeWindow(Arrival, Depature):(" + currentStep.ArrivalTime + "," + currentStep.DepatureTime + ")");
+                        writer.WriteLine("CumulativeLoad:" + currentStep.CumulativeLoad);
+                        writer.WriteLine("\n");
+                    }
+                }
+                writer.WriteLine("\n");
+                writer.WriteLine("Customer Info:");
+
+                int cnt = 0;
+                foreach (Customer customer in Customers)
+                {
+                    writer.WriteLine("CustomerID:" + cnt);
+                    writer.WriteLine("Stops(RideOn, RideOff): (" + customer.PickupDelivery[0].Id + "," + customer.PickupDelivery[1].Id + ")");
+                    writer.WriteLine("DesiredTimeWindow(RideOn, RideOFf): (" + customer.DesiredTimeWindow[0] + "," +customer.DesiredTimeWindow[1] + ")");
+                    writer.WriteLine("RealTimeWindow(RideOn, RideOFf): (" + customer.RealTimeWindow[0] + "," + customer.RealTimeWindow[1] + ")");
+                    writer.WriteLine("WaitTime: " + customer.WaitTime);
+                    writer.WriteLine("DelayTime: " + customer.DelayTime);
+                    cnt++;
+                    writer.WriteLine("");
+                }
+            }
+            using (StreamWriter writer = new StreamWriter(path2, append: false)) // append: true で追記
+            {
+
+                writer.WriteLine("Vehicle Route Info:");
+
+                for (int vehicleId = 0; vehicleId < VehicleRoutes.Count; vehicleId++)
+                {
+                    writer.WriteLine("VehicleID:" + vehicleId);
+                    List<RouteStep> routeSteps = VehicleRoutes[vehicleId];
+
+                    writer.WriteLine("stepId,stopId,requestID, pickupOrDelivery,ArrivalTime,DepatureTime, CumulativeLoad");
+                    for (int stepId = 0; stepId < routeSteps.Count; stepId++)
+                    {
+                        RouteStep currentStep = routeSteps[stepId];
+                        writer.WriteLine("" +stepId + "," + Customers[currentStep.RequestID].PickupDelivery[currentStep.PickupOrDelivery].Id + "," + currentStep.RequestID + "," + currentStep.PickupOrDelivery + "," +  currentStep.ArrivalTime + "," + currentStep.DepatureTime + "," + currentStep.CumulativeLoad);
+                    }
+                }
+                writer.WriteLine("Customer Info:");
+
+                int cnt = 0;
+                writer.WriteLine("CustomerID, RideOnStop,RideOffStop,DesiredRideOnTime,DesiredRideOffTime,RealRideOnTime,RealRideOffTime,WaitTime,DelayTime");
+
+                foreach (Customer customer in Customers)
+                {
+                    writer.WriteLine(cnt + "," + customer.PickupDelivery[0].Id + "," + customer.PickupDelivery[1].Id + "," + customer.DesiredTimeWindow[0] + "," + customer.DesiredTimeWindow[1] + "," + customer.RealTimeWindow[0] + "," + customer.RealTimeWindow[1] + "," + customer.WaitTime + "," +customer.DelayTime);
+                    cnt++;
+                }
+            }
+
+        }
+
+        public void AppendCSVSolutionData(string path, int id, int gene_cnt)
+        {
+            using (StreamWriter writer = new StreamWriter(path, append: true)) // append: true で追記
+            {
+                string tmp = "";
+
+                // 解の付属情報
+                tmp += evalCnt;
+                tmp += "," + myEvalCnt;
+                tmp += "," + gene_cnt;
+                
+                for (int i = 0; i < ObjectiveFunctions.Count; i++)
+                {
+                    tmp += "," + ObjectiveFunctions[i];
+                }
+                for (int i = 0; i < gene.Length; i++)
+                {
+                    tmp += "," + gene[i];
+                }
+                writer.WriteLine(tmp);
+            }
         }
     }
 

@@ -330,6 +330,9 @@ namespace Simulator.MySearchAlgorithm
         // 解を出力
         public void OutputSolutions()
         {
+            // ファイルを2つにする
+            // 1. 可視化用のファイル(SimulationResult.csv)
+            // 2. 最適化(optimisationResult.csv), ID(個体の)、Eval(評価回数)、Gen(世代)、遺伝子(全ての遺伝子)、評価関数(全ての評価関数)　パレート最適フロント含めいろいろ分析ができるyに応じていろいろ変わる。
             FileRecorder recoder = new FileRecorder(Path.Combine(@Path.Combine(Environment.CurrentDirectory, @"Logger", @"MultiObjectSolution.csv")));
             int cnt = 0;
             int[] dominatedNum = new int[population.Count]; // 支配度管理
