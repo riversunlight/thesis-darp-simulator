@@ -274,9 +274,7 @@ namespace Simulator.Objects.Data_Objects.Routing
         public Assignment TryGetSolution(RoutingSearchParameters searchParameters)
         {
             Assignment solution = null;
-            RandomAlgo my_random_solver = new RandomAlgo();
-            GA gaSolver = new GA();
-            NSGA nsgaSolver = new NSGA();
+            
 
             MyAssignment mysolution = null;
             MyAssignment mysolution2 = null;
@@ -294,9 +292,12 @@ namespace Simulator.Objects.Data_Objects.Routing
                 //Get the solution of the problem
                 try
                 {
-                    mysolution = my_random_solver.TryGetSolution(RoutingModel, RoutingIndexManager, DataModel);
-                    mysolution2 = gaSolver.TryGetSolution(RoutingModel, RoutingIndexManager, DataModel);
-                    mysolution3 = nsgaSolver.TryGetSolution(RoutingModel, RoutingIndexManager, DataModel);
+                    RandomAlgo my_random_solver = new RandomAlgo(RoutingModel, RoutingIndexManager, DataModel);
+                    mysolution = my_random_solver.TryGetSolution();
+                    GA gaSolver = new GA(RoutingModel, RoutingIndexManager, DataModel);
+                    mysolution2 = gaSolver.TryGetSolution();
+                    NSGA nsgaSolver = new NSGA(RoutingModel, RoutingIndexManager, DataModel);
+                    mysolution3 = nsgaSolver.TryGetSolution();
                     solution = RoutingModel.SolveWithParameters(searchParameters);
 
 

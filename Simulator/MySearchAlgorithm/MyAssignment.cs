@@ -7,6 +7,7 @@ using Simulator.Objects.Data_Objects.Routing;
 using Simulator.Objects.Data_Objects.Simulation_Data_Objects;
 using Simulator.Objects.Data_Objects.Simulation_Objects;
 using System.Runtime.Versioning;
+using System.Linq;
 
 namespace Simulator.MySearchAlgorithm
 {
@@ -20,6 +21,7 @@ namespace Simulator.MySearchAlgorithm
         public List<RouteStep> LastStep;
         public int[] gene;
         public int myEvalCnt;
+        public int Id;
         public static int evalCnt;
         public MyAssignment(int customer_num)
         {
@@ -31,6 +33,26 @@ namespace Simulator.MySearchAlgorithm
             gene = new int[customer_num * 2];
             myEvalCnt = -1;
         }
+
+        public MyAssignment(MyAssignment old)
+        {
+            VehicleRoutes = old.VehicleRoutes.ToDictionary(
+                pair=>pair.Key,
+                pair=>new List<RouteStep>(pair.Value)
+            );
+            NodeToVehicleMap = new Dictionary<int, int>(old.NodeToVehicleMap);
+            ObjectiveFunctions = new Dictionary<int, long>(old.ObjectiveFunctions);
+            Customers = new List<Customer>(old.Customers);
+            LastStep = new List<RouteStep>(old.LastStep);
+            gene = new int[Customers.Count * 2];
+            for (int i = 0; i < gene.Length; i++)
+            {
+                gene[i] = old.gene[i];
+            }
+            myEvalCnt = old.myEvalCnt;
+            Id = old.Id;
+        }
+
         public void resetEvalCnt()
         {
             evalCnt = 0;
@@ -226,7 +248,7 @@ namespace Simulator.MySearchAlgorithm
                 string tmp = "";
 
                 // 解の付属情報
-                tmp += evalCnt;
+                tmp += Id;
                 tmp += "," + myEvalCnt;
                 tmp += "," + gene_cnt;
                 

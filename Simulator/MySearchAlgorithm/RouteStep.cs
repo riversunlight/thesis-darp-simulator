@@ -20,5 +20,13 @@ namespace Simulator.MySearchAlgorithm
             DepatureTime = -1;
             CumulativeLoad = -1;
         }
+
+        public RouteStep(RouteStep old)
+        {
+            NodeIndex = old.NodeIndex;
+            ArrivalTime = old.ArrivalTime;
+            DepatureTime = old.DepatureTime;
+            CumulativeLoad = old.CumulativeLoad;
+        }
     }
 }
