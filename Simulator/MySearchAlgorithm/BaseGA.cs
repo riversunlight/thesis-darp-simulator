@@ -48,6 +48,7 @@ namespace Simulator.MySearchAlgorithm
             mutatePriority = 10;
             randomCreater = new Random();
             FirstWrited = 0;
+            SolutionId = 0;
             MyAssignment dummy = new MyAssignment(1);
             dummy.resetEvalCnt();
 
@@ -182,7 +183,7 @@ namespace Simulator.MySearchAlgorithm
                     }
                     offspringSolution.Simulate(DataModel);
                     Mutate(ref offspringSolution);
-                    offspringSolution.Id = GiveId();
+                    offspringSolution.SetId(GiveId());
                     offspring.Add(offspringSolution);
                 }
 
@@ -260,7 +261,7 @@ namespace Simulator.MySearchAlgorithm
                 }
             }
         }
-
+        /*
         public virtual void OutputSolutionData(string path, int gene_cnt)
         {
             if (FirstWrited == 0)
@@ -286,7 +287,7 @@ namespace Simulator.MySearchAlgorithm
                 population[i].AppendCSVSolutionData(path, -1, gene_cnt);
             }
         }
-
+        */
 
         // 制約違反の解は多数存在
         // GAで
@@ -312,7 +313,7 @@ namespace Simulator.MySearchAlgorithm
                 }
                 FixRideOnOff(ref firstSolution);
                 firstSolution.Simulate(DataModel);
-                firstSolution.Id = GiveId();
+                firstSolution.SetId(GiveId());
                 population.Add(firstSolution);
             }
         }
@@ -327,7 +328,10 @@ namespace Simulator.MySearchAlgorithm
         public virtual MyAssignment TryGetSolution()
         {
 
-            MyAssignment solution = null;
+            MyAssignment dummy = new MyAssignment(0);
+            dummy.setPath("BaseGA.csv");
+            dummy.setGeneCnt(0);
+
             InitialPopulation();
 
 
@@ -337,9 +341,9 @@ namespace Simulator.MySearchAlgorithm
                 CrossOver();
                 SelectSurvivor();
                 generationCnt++;
-
+                dummy.setGeneCnt(generationCnt);
             }
-            solution = population[0];
+            MyAssignment solution = population[0];
 
             return solution;
         }

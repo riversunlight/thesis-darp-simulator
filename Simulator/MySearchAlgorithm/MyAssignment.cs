@@ -8,6 +8,7 @@ using Simulator.Objects.Data_Objects.Simulation_Data_Objects;
 using Simulator.Objects.Data_Objects.Simulation_Objects;
 using System.Runtime.Versioning;
 using System.Linq;
+using System.Diagnostics;
 
 namespace Simulator.MySearchAlgorithm
 {
@@ -22,7 +23,9 @@ namespace Simulator.MySearchAlgorithm
         public int[] gene;
         public int myEvalCnt;
         public int Id;
+        public static string path;
         public static int evalCnt;
+        public static int geneCnt;
         public MyAssignment(int customer_num)
         {
             VehicleRoutes = new Dictionary<int, List<RouteStep>>();
@@ -57,6 +60,28 @@ namespace Simulator.MySearchAlgorithm
         {
             evalCnt = 0;
         }
+        public void setGeneCnt(int cnt)
+        {
+            geneCnt = cnt;
+        }
+        public void setPath(string _path)
+        {
+            path = _path;
+            using (StreamWriter writer = new StreamWriter(path, append: false))
+            {
+                string tmp = "ID, Evaluation,Generation";
+                for (int i = 0; i < ObjectiveFunctions.Count; i++)
+                {
+                    tmp += ",Object" + i;
+                }
+                for (int i = 0; i < gene.Length; i++)
+                {
+                    tmp += ",Gene" + i;
+                }
+
+                writer.WriteLine(tmp);
+            }
+        }
 
         // convert solution'sIndex to Index of List<Stop> Stops
         public int ConvertIndex2LStopId(int vehicle_count, int index)
@@ -85,6 +110,7 @@ namespace Simulator.MySearchAlgorithm
             {
                 Customers.Add(new Customer(customer));
             }
+            int[] alreadyGetOn = new int[Customers.Count];
             VehicleRoutes[0] = new List<RouteStep>();
             for (int i = 0; i < 2 * Customers.Count; i++)
             {
@@ -126,9 +152,14 @@ namespace Simulator.MySearchAlgorithm
                     {
                         Customers[customerIndex].RealTimeWindow[0] = currentTime;
                         currentLoad += 1; // ピックアップの場合
+                        alreadyGetOn[customerIndex] = 1;
                     }
                     else
                     {
+                        if (alreadyGetOn[customerIndex] == 0)
+                        {
+                            Debug.Assert(false);
+                        }
                         Customers[customerIndex].RealTimeWindow[1] = currentTime;
                         currentLoad -= 1; // デリバリーの場合
                     }
@@ -147,6 +178,12 @@ namespace Simulator.MySearchAlgorithm
             SetObjects();
         }
 
+        public void SetId(int _id)
+        {
+            Id = _id;
+            AppendCSVSolutionData();
+        }
+
         public long ObjectiveFunctionRoutingLengh()
         {
             long res = 0;
@@ -162,6 +199,15 @@ namespace Simulator.MySearchAlgorithm
             for (int customerId = 0; customerId < Customers.Count; customerId++)
             {
                 res += Customers[customerId].DelayTime;
+            }
+            return res;
+        }
+        public long ObjectiveFunctionTotalWait()
+        {
+            long res = 0;
+            for (int customerId = 0; customerId < Customers.Count; customerId++)
+            {
+                res += Customers[customerId].WaitTime;
             }
             return res;
         }
@@ -241,7 +287,7 @@ namespace Simulator.MySearchAlgorithm
 
         }
 
-        public void AppendCSVSolutionData(string path, int id, int gene_cnt)
+        public void AppendCSVSolutionData()
         {
             using (StreamWriter writer = new StreamWriter(path, append: true)) // append: true で追記
             {
@@ -250,7 +296,7 @@ namespace Simulator.MySearchAlgorithm
                 // 解の付属情報
                 tmp += Id;
                 tmp += "," + myEvalCnt;
-                tmp += "," + gene_cnt;
+                tmp += "," + geneCnt;
                 
                 for (int i = 0; i < ObjectiveFunctions.Count; i++)
                 {

@@ -6,6 +6,7 @@ using Google.OrTools.ConstraintSolver;
 using Google.Protobuf.WellKnownTypes;
 using Simulator.Objects.Data_Objects.Simulation_Objects;
 using Simulator.MySearchAlgorithm;
+using System.IO;
 
 namespace Simulator.Objects.Data_Objects.Routing
 {
@@ -292,6 +293,13 @@ namespace Simulator.Objects.Data_Objects.Routing
                 //Get the solution of the problem
                 try
                 {
+                    using (StreamWriter writer = new StreamWriter("stops.csv", append: false))
+                    {
+                        foreach (Stop stop in DataModel.IndexManager.Stops)
+                        {
+                            writer.WriteLine(stop.Id + "," + stop.Latitude + "," + stop.Longitude);
+                        }
+                    };
                     RandomAlgo my_random_solver = new RandomAlgo(RoutingModel, RoutingIndexManager, DataModel);
                     mysolution = my_random_solver.TryGetSolution();
                     GA gaSolver = new GA(RoutingModel, RoutingIndexManager, DataModel);

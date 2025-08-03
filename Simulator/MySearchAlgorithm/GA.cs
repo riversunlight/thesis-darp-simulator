@@ -24,7 +24,10 @@ namespace Simulator.MySearchAlgorithm
 
         public override MyAssignment TryGetSolution()
         {
-            MyAssignment solution = null;
+            MyAssignment dummy = new MyAssignment(0);
+            dummy.setPath("GA.csv");
+            dummy.setGeneCnt(0);
+
             InitialPopulation();
 
             while(StoppingCondition() == 0)
@@ -32,10 +35,9 @@ namespace Simulator.MySearchAlgorithm
                 CrossOver();
                 SelectSurvivor();
                 generationCnt++;
-                OutputSolutionData("GA.csv", generationCnt);
-                
+                dummy.setGeneCnt(generationCnt);
             }
-            solution = population[0];
+            MyAssignment solution = population[0];
             
 
             return solution;

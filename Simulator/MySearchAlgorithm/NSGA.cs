@@ -28,6 +28,10 @@ namespace Simulator.MySearchAlgorithm
         // 生存者選択: 支配度からランクを割り出し、ランク0を次の親世代に入れる。
         public override void SelectSurvivor()
         {
+            using (StreamWriter writer = new StreamWriter("NSGA_debug.txt", append: true))
+            {
+                writer.WriteLine(generationCnt);
+            }
             List<MyAssignment> allCandidates = population.Concat(offspring).ToList();
             int[] dominatedNum = new int[allCandidates.Count]; // 支配度管理
             List<List<int>> edges = new List<List<int>>(); // 後から支配度減らす用
@@ -70,44 +74,59 @@ namespace Simulator.MySearchAlgorithm
                         dominatedNum[i] = -1;
                     }
                 }
+
+                using (StreamWriter writer = new StreamWriter("NSGA_debug.txt", append: true))
+                {
+                    writer.WriteLine(nextPopulation.Count);
+                    for (int i = 0; i < allCandidates.Count; i++)
+                    {
+                        writer.Write(dominatedNum[i] + ",");
+                    }
+                    writer.WriteLine();
+                    for (int i = 0; i < rank0Solutions.Count; i++)
+                    {
+                        writer.Write(rank0Solutions[i] + ",");
+                    }
+                    writer.WriteLine();
+                }
+
                 if (rank0Solutions.Count + nextPopulation.Count <= population_size)
                 {
                     foreach (int index in rank0Solutions)
                     {
-                        Console.Write(index + ",");
                         nextPopulation.Add(new MyAssignment(allCandidates[index]));
                     }
-                    Console.WriteLine();
                 } else {
                     // 混雑度ソート追加
                     for (int j = 0; j < rank0Solutions.Count; j++)
                     {
                         if (nextPopulation.Count >= population_size) break;
                         int index = rank0Solutions[j];
-                        Console.Write(index + ",");
 
                         nextPopulation.Add(new MyAssignment(allCandidates[index]));
                     }
                 }
             }
             population = nextPopulation;
+
         }
 
 
         public override MyAssignment TryGetSolution()
         {
-            MyAssignment solution = null;
+            MyAssignment dummy = new MyAssignment(0);
+            dummy.setPath("NSGA.csv");
+            dummy.setGeneCnt(0);
             InitialPopulation();
-            OutputSolutionData("NSGA.csv", 0);
-
+            
             while (StoppingCondition() == 0)
             {
                 CrossOver();
                 SelectSurvivor();
                 generationCnt++;
-                OutputSolutionData("NSGA.csv", generationCnt);
+                dummy.setGeneCnt(generationCnt);
             }
-            solution = population[0];
+            MyAssignment solution = population[0];
 
             return solution;
         }

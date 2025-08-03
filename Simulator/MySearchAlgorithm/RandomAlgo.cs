@@ -82,6 +82,7 @@ namespace Simulator.MySearchAlgorithm
         {
             // 評価回数リセット
             MyAssignment dummy = new MyAssignment(CustomerNum);
+            dummy.setPath("RandomAlgoSolution.csv");
             dummy.resetEvalCnt();
 
             InitialPopulation();
@@ -96,7 +97,6 @@ namespace Simulator.MySearchAlgorithm
             {
                 population[i].VisualTextSimulateResult(i);
             }
-            OutputSolutionData("RandomAlgoSolution.csv", 0);
             
 
             return solution;
