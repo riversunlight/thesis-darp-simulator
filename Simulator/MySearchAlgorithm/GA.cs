@@ -9,6 +9,7 @@ using Simulator.Objects.Simulation;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Diagnostics;
 
 namespace Simulator.MySearchAlgorithm
 {
@@ -24,6 +25,8 @@ namespace Simulator.MySearchAlgorithm
 
         public override MyAssignment TryGetSolution()
         {
+            sw = Stopwatch.StartNew();
+
             MyAssignment dummy = new MyAssignment(0);
             dummy.setPath("GA.csv");
             dummy.setGeneCnt(0);
@@ -33,12 +36,18 @@ namespace Simulator.MySearchAlgorithm
             while(StoppingCondition() == 0)
             {
                 CrossOver();
+                for (int i = 0; i < offspring_size; i++) offspring[i].Simulate(DataModel);
                 SelectSurvivor();
                 generationCnt++;
                 dummy.setGeneCnt(generationCnt);
             }
             MyAssignment solution = population[0];
-            
+
+            for (int i = 0; i < population_size; i++)
+            {
+                population[i].VisualTextSimulateResult(i, "GA");
+            }
+
 
             return solution;
         }

@@ -10,6 +10,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.IO;
+using System.Diagnostics;
 
 // 基底クラス
 // シミュレータは絶対にInitの直後でTryGetSolutionを使うようにすること!!!
@@ -33,9 +34,11 @@ namespace Simulator.MySearchAlgorithm
         public int NodeNum;
         public int CustomerNum;
         public int mutatePriority;
+        public int limitSeconds;
 
         public int FirstWrited;
         public int SolutionId;
+        public Stopwatch sw;
 
         // Vianaを参考にしよう
         public BaseGA(RoutingModel _routingModel, RoutingIndexManager _manager, RoutingDataModel _DataModel)
@@ -49,6 +52,7 @@ namespace Simulator.MySearchAlgorithm
             randomCreater = new Random();
             FirstWrited = 0;
             SolutionId = 0;
+            limitSeconds = 180;
             MyAssignment dummy = new MyAssignment(1);
             dummy.resetEvalCnt();
 
@@ -61,8 +65,125 @@ namespace Simulator.MySearchAlgorithm
         {
             return SolutionId++;
         }
+
+        public void CrossOverOnePoint() // 1点交叉、O(n)
+        {
+            offspring = new List<MyAssignment>();
+
+            for (int i = 0; i < offspring_size / 2; i++)
+            {
+                int p1 = -1, p2 = -1;
+                SelectParent(ref p1, ref p2);
+                int[] p1_gene = population[p1].gene;
+                int[] p2_gene = population[p2].gene;
+
+                for (int j = 0; j < 2; j++)
+                {
+                    int[] parentA = (j == 0) ? p1_gene : p2_gene;
+                    int[] parentB = (j == 0) ? p2_gene : p1_gene;
+
+                    List<int> childGeneList = new List<int>();
+                    int cutPoint = randomCreater.Next(1, parentA.Length);
+                    int[] already_exist = new int[p1_gene.Length];
+
+                    for (int k = 0; k < cutPoint; k++)
+                    {
+                        already_exist[parentA[k]] = 1;
+                        childGeneList.Add(parentA[k]);
+                    }
+                    for (int k = 0; k < p1_gene.Length; k++)
+                    {
+                        if (already_exist[parentB[k]] == 0)
+                            childGeneList.Add(parentB[k]);
+
+                    }
+
+                    MyAssignment offspringSolution = new MyAssignment(CustomerNum);
+                    for (int k = 0; k < 2 * CustomerNum; k++)
+                    {
+                        offspringSolution.gene[k] = childGeneList[k];
+                    }
+                    Mutate(ref offspringSolution);
+                    offspringSolution.SetId(GiveId());
+                    offspring.Add(offspringSolution);
+                }
+
+            }
+
+        }
+
+        public void CrossOverPPX()
+        {
+            offspring = new List<MyAssignment>();
+
+            for (int i = 0; i < offspring_size / 2; i++)
+            {
+                int p1 = -1, p2 = -1;
+                SelectParent(ref p1, ref p2);
+                int[] p1_gene = population[p1].gene;
+                int[] p2_gene = population[p2].gene;
+
+                for (int j = 0; j < 2; j++)
+                {
+
+                    int[] parentA = (j == 0) ? p1_gene : p2_gene;
+                    int[] parentB = (j == 0) ? p2_gene : p1_gene;
+                    int n = parentA.Length;
+                    int[] child = new int[n];
+                    bool[] used = new bool[n + 1]; // ID基準で使用チェック
+                    int idx = 0;
+
+                    // ① 親を結合して並び順を混ぜる
+                    var merged = new List<int>();
+                    merged.AddRange(parentA);
+                    merged.AddRange(parentB);
+
+                    // ② 各遺伝子にランダムキーを付ける
+                    var keyList = merged.Select(g => new { gene = g, key = randomCreater.NextDouble() }).ToList();
+                    var sorted = keyList.OrderBy(x => x.key).Select(x => x.gene).ToList();
+
+                    // ③ 順序制約を守りつつ子を構築
+                    foreach (int g in sorted)
+                    {
+                        int id = g / 2; // ペアID
+                        bool isPickup = (g % 2 == 0); // 例: 偶数ならpickup
+
+                        if (used[g]) continue;
+
+                        if (isPickup)
+                        {
+                            child[idx++] = g;
+                            used[g] = true;
+                        }
+                        else
+                        {
+                            int pickup = g - 1; // pickupは1つ前
+                            if (!used[pickup])
+                            {
+                                child[idx++] = pickup;
+                                used[pickup] = true;
+                            }
+                            child[idx++] = g;
+                            used[g] = true;
+                        }
+
+                        if (idx >= n) break;
+                    }
+
+                    MyAssignment offspringSolution = new MyAssignment(CustomerNum);
+                    offspringSolution.gene = child;
+                    Mutate(ref offspringSolution);
+                    offspringSolution.Simulate(DataModel);
+                    offspringSolution.SetId(GiveId());
+                    offspring.Add(offspringSolution);
+
+                }
+            }
+        }
+
+
         // 親は毎回選べるように
-        public virtual void CrossOver()
+        public void CrossOverViana() // Viana, O(n^3)
         {
             offspring = new List<MyAssignment>();
             for (int i = 0; i < offspring_size / 2; i++)
@@ -164,7 +285,7 @@ namespace Simulator.MySearchAlgorithm
                                     tempSolution.Simulate(DataModel);
                                     if (tempSolution.ObjectiveFunctions[1] < bestScore)
                                     {
-                                        bestScore = tempSolution.ObjectiveFunctions[1];
+                                        bestScore = tempSolution.ObjectiveFunctionFinishTime();
                                         bestChildGene = new List<int>(childGeneList);
                                     }
                                     childGeneList.RemoveAt(deliveryPoint);
@@ -181,13 +302,18 @@ namespace Simulator.MySearchAlgorithm
                     {
                         offspringSolution.gene[k] = childGeneList[k];
                     }
-                    offspringSolution.Simulate(DataModel);
                     Mutate(ref offspringSolution);
+                    offspringSolution.Simulate(DataModel);
                     offspringSolution.SetId(GiveId());
                     offspring.Add(offspringSolution);
                 }
 
             }
+        }
+
+        public virtual void CrossOver()
+        {
+            CrossOverPPX();
         }
 
         // 一様にするか
@@ -229,7 +355,6 @@ namespace Simulator.MySearchAlgorithm
                 newGene[newGene.Length - 1] = customerId * 2 + 1;
                 solution.gene = newGene;
             }
-            solution.Simulate(DataModel);
         }
 
         // 0, 1反転
@@ -320,14 +445,20 @@ namespace Simulator.MySearchAlgorithm
 
         public virtual int StoppingCondition()
         {
-            if (generationCnt == 1000) return 1;
+
+            if (sw.Elapsed.TotalSeconds > limitSeconds)
+            {
+                return 1;
+            }
             return 0;
+            //if (generationCnt == 1000) return 1;
+            //return 0;
         }
 
 
         public virtual MyAssignment TryGetSolution()
         {
-
+            sw = Stopwatch.StartNew();
             MyAssignment dummy = new MyAssignment(0);
             dummy.setPath("BaseGA.csv");
             dummy.setGeneCnt(0);

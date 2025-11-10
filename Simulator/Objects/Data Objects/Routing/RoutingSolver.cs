@@ -7,6 +7,9 @@ using Google.Protobuf.WellKnownTypes;
 using Simulator.Objects.Data_Objects.Simulation_Objects;
 using Simulator.MySearchAlgorithm;
 using System.IO;
+using MathNet.Numerics.Optimization;
+using static System.Net.Mime.MediaTypeNames;
+using System.Threading;
 
 namespace Simulator.Objects.Data_Objects.Routing
 {
@@ -300,14 +303,31 @@ namespace Simulator.Objects.Data_Objects.Routing
                             writer.WriteLine(stop.Id + "," + stop.Latitude + "," + stop.Longitude);
                         }
                     };
-                    RandomAlgo my_random_solver = new RandomAlgo(RoutingModel, RoutingIndexManager, DataModel);
-                    mysolution = my_random_solver.TryGetSolution();
-                    GA gaSolver = new GA(RoutingModel, RoutingIndexManager, DataModel);
-                    mysolution2 = gaSolver.TryGetSolution();
+                    using (StreamWriter writer = new StreamWriter("matrics.csv", append: false))
+                    {
+                        for (int i = 0; i < DataModel.TravelTimes.GetLength(0); i++) {
+                            for (int j = 0; j < DataModel.TravelTimes.GetLength(1); j++)
+                            {
+                                if (j != 0)
+                                {
+                                    writer.Write(",");
+                                }
+                                writer.Write(DataModel.TravelTimes[i, j]);
+                            }
+                            writer.WriteLine();
+                        }
+                    };
+                    //RandomAlgo my_random_solver = new RandomAlgo(RoutingModel, RoutingIndexManager, DataModel);
+                    //mysolution = my_random_solver.TryGetSolution();
+                    //GA gaSolver = new GA(RoutingModel, RoutingIndexManager, DataModel);
+                    //mysolution2 = gaSolver.TryGetSolution();
                     NSGA nsgaSolver = new NSGA(RoutingModel, RoutingIndexManager, DataModel);
                     mysolution3 = nsgaSolver.TryGetSolution();
+                    Console.WriteLine("Finish!");
+                    Thread.Sleep(20000);
+                    Console.WriteLine("Already!");
                     solution = RoutingModel.SolveWithParameters(searchParameters);
-
+                    
 
                 }
                 catch (Exception)

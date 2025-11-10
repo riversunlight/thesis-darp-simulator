@@ -50,7 +50,8 @@ namespace Simulator.Objects.Data_Objects.Simulation_Data_Objects
             var distance = Calculator.CalculateHaversineDistance(pickup.Latitude, pickup.Longitude, delivery.Latitude,
                 delivery.Longitude);
             var travelTime = Calculator.DistanceToTravelTime(vehicleAverageSpeed, distance);
-            var deliveryTime = rng.Next(pickupTime + (int)travelTime, pickupTime + (int)travelTime+ 30*60); //delivery time will be at minimum the pickuptime + travelTime and at max 30 minutes from pickup + travelTime
+            //var deliveryTime = rng.Next(pickupTime + (int)travelTime, pickupTime + (int)travelTime+ 30*60); //delivery time will be at minimum the pickuptime + travelTime and at max 30 minutes from pickup + travelTime
+            var deliveryTime = rng.Next(pickupTime + (int)travelTime, pickupTime + (int)travelTime); //delivery time will be at minimum the pickuptime + travelTime and at max 30 minutes from pickup + travelTime
 
             //var deliveryTime = 24 * 60 * 60;
             if (pickupTime > deliveryTime)

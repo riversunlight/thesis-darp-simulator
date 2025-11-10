@@ -11,6 +11,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using Simulator.Logger;
 using System.IO;
+using System.Diagnostics;
 
 namespace Simulator.MySearchAlgorithm
 {
@@ -22,7 +23,11 @@ namespace Simulator.MySearchAlgorithm
         public NSGA(RoutingModel _routingModel, RoutingIndexManager _manager, RoutingDataModel _DataModel) : base(_routingModel, _manager, _DataModel)
         {
         }
-
+        public void SettingsParameter()
+        {
+            population_size = 100;
+            offspring_size = 100;
+        }
 
 
         // 生存者選択: 支配度からランクを割り出し、ランク0を次の親世代に入れる。
@@ -74,7 +79,7 @@ namespace Simulator.MySearchAlgorithm
                         dominatedNum[i] = -1;
                     }
                 }
-
+                /*
                 using (StreamWriter writer = new StreamWriter("NSGA_debug.txt", append: true))
                 {
                     writer.WriteLine(nextPopulation.Count);
@@ -88,7 +93,7 @@ namespace Simulator.MySearchAlgorithm
                         writer.Write(rank0Solutions[i] + ",");
                     }
                     writer.WriteLine();
-                }
+                }*/
 
                 if (rank0Solutions.Count + nextPopulation.Count <= population_size)
                 {
@@ -97,12 +102,15 @@ namespace Simulator.MySearchAlgorithm
                         nextPopulation.Add(new MyAssignment(allCandidates[index]));
                     }
                 } else {
-                    // 混雑度ソート追加
-                    for (int j = 0; j < rank0Solutions.Count; j++)
+                    Dictionary<int, double> crowding = CalcCrowdingDistance(rank0Solutions, allCandidates);
+
+                    var sorted = rank0Solutions
+                        .OrderByDescending(idx => crowding[idx])
+                        .ToList();
+
+                    foreach (int index in sorted)
                     {
                         if (nextPopulation.Count >= population_size) break;
-                        int index = rank0Solutions[j];
-
                         nextPopulation.Add(new MyAssignment(allCandidates[index]));
                     }
                 }
@@ -111,14 +119,45 @@ namespace Simulator.MySearchAlgorithm
 
         }
 
+        private Dictionary<int, double> CalcCrowdingDistance(List<int> indices, List<MyAssignment> allCandidates)
+        {
+            int m = allCandidates[0].ObjectiveFunctions.Count;
+            Dictionary<int, double> distance = indices.ToDictionary(i => i, i => 0.0);
+
+            for (int obj = 0; obj < m; obj++)
+            {
+                var sorted = indices.OrderBy(i => allCandidates[i].ObjectiveFunctions[obj]).ToList();
+                double minVal = allCandidates[sorted.First()].ObjectiveFunctions[obj];
+                double maxVal = allCandidates[sorted.Last()].ObjectiveFunctions[obj];
+                double range = maxVal - minVal;
+                if (range == 0) range = 1; // ゼロ割防止
+
+                // 両端は無限大
+                distance[sorted.First()] = double.PositiveInfinity;
+                distance[sorted.Last()] = double.PositiveInfinity;
+
+                for (int k = 1; k < sorted.Count - 1; k++)
+                {
+                    double prev = allCandidates[sorted[k - 1]].ObjectiveFunctions[obj];
+                    double next = allCandidates[sorted[k + 1]].ObjectiveFunctions[obj];
+                    distance[sorted[k]] += (next - prev) / range;
+                }
+            }
+            return distance;
+        }
+
 
         public override MyAssignment TryGetSolution()
         {
+            sw = Stopwatch.StartNew();
+
             MyAssignment dummy = new MyAssignment(0);
             dummy.setPath("NSGA.csv");
             dummy.setGeneCnt(0);
+            SettingsParameter();
             InitialPopulation();
-            
+            generationCnt++; // 初期化を0世代とするため。
+            dummy.setGeneCnt(generationCnt);
             while (StoppingCondition() == 0)
             {
                 CrossOver();
@@ -127,6 +166,11 @@ namespace Simulator.MySearchAlgorithm
                 dummy.setGeneCnt(generationCnt);
             }
             MyAssignment solution = population[0];
+
+            for (int i = 0; i < population_size; i++)
+            {
+                population[i].VisualTextSimulateResult(i, "NSGA");
+            }
 
             return solution;
         }

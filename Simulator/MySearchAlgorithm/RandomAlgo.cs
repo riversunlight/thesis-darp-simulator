@@ -21,6 +21,11 @@ namespace Simulator.MySearchAlgorithm
         {
         }
 
+        public void SettingsParameter()
+        {
+            population_size = 20000;
+        }
+
 
         // オブジェクト関数
         public void PrintStaticsData()
@@ -84,6 +89,7 @@ namespace Simulator.MySearchAlgorithm
             MyAssignment dummy = new MyAssignment(CustomerNum);
             dummy.setPath("RandomAlgoSolution.csv");
             dummy.resetEvalCnt();
+            SettingsParameter();
 
             InitialPopulation();
 
@@ -95,7 +101,7 @@ namespace Simulator.MySearchAlgorithm
             PrintStaticsData();
             for (int i  = 0; i < population_size; i++)
             {
-                population[i].VisualTextSimulateResult(i);
+                population[i].VisualTextSimulateResult(i, "Random");
             }
             
 

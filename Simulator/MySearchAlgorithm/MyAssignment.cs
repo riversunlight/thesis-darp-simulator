@@ -26,6 +26,7 @@ namespace Simulator.MySearchAlgorithm
         public static string path;
         public static int evalCnt;
         public static int geneCnt;
+        public static int First;
         public MyAssignment(int customer_num)
         {
             VehicleRoutes = new Dictionary<int, List<RouteStep>>();
@@ -67,6 +68,11 @@ namespace Simulator.MySearchAlgorithm
         public void setPath(string _path)
         {
             path = _path;
+            First = 1;
+            
+        }
+        public void WirteFirstLine()
+        {
             using (StreamWriter writer = new StreamWriter(path, append: false))
             {
                 string tmp = "ID, Evaluation,Generation";
@@ -81,6 +87,7 @@ namespace Simulator.MySearchAlgorithm
 
                 writer.WriteLine(tmp);
             }
+
         }
 
         // convert solution'sIndex to Index of List<Stop> Stops
@@ -91,8 +98,8 @@ namespace Simulator.MySearchAlgorithm
 
         public void SetObjects()
         {
-            ObjectiveFunctions[0] = ObjectiveFunctionRoutingLengh();
-            ObjectiveFunctions[1] = ObjectiveFunctionTotalDelay();
+            ObjectiveFunctions[0] = ObjectiveFunctionFinishTime();
+            ObjectiveFunctions[1] = ObjectiveFunctionDryRun();
         }
 
 
@@ -117,6 +124,15 @@ namespace Simulator.MySearchAlgorithm
                 if (gene[i] == -1) continue;
                 VehicleRoutes[0].Add(new RouteStep(gene[i]));
             }
+
+            for (int i = 0; i < Customers.Count; i++)
+            {
+                int convertStopId = ConvertIndex2LStopId(VehicleRoutes.Count, 2*i);
+                int convertStopId2 = ConvertIndex2LStopId(VehicleRoutes.Count, 2 * i + 1);
+
+                int travelTime = (int)DataModel.TravelTimes[convertStopId, convertStopId2];
+                //Debug.Assert(travelTime == Customers[i].DesiredTimeWindow[1] - Customers[i].DesiredTimeWindow[0]);
+            }
             foreach (var vehicleRoute in VehicleRoutes)
             {
                 int vehicleId = vehicleRoute.Key;
@@ -134,18 +150,20 @@ namespace Simulator.MySearchAlgorithm
                     int pickupDelivery = currentStep.PickupOrDelivery;
                     //int nextStopId = DataModel.IndexManager.Stops[ConvertIndex2LStopId(VehicleRoutes.Count, currentStep.NodeIndex)].Id;
 
-
-                    int travelTime = (int)DataModel.TravelTimes[previousStopId, ConvertIndex2LStopId(VehicleRoutes.Count, currentStep.NodeIndex)];
+                    int convertStopId = ConvertIndex2LStopId(VehicleRoutes.Count, currentStep.NodeIndex);
+                    int travelTime = (int)DataModel.TravelTimes[previousStopId, convertStopId];
                     currentTime += travelTime;
                     currentStep.ArrivalTime = currentTime;
 
-                    // 停留所での処理時間を計算（例として固定値を使用）
-                    long desiredPickupTime = Customers[customerIndex].DesiredTimeWindow[pickupDelivery];
-                    if (desiredPickupTime > currentTime)
-                    {
-                        currentTime = (int)desiredPickupTime;
-                    }
-                    currentStep.DepatureTime = currentTime;
+                    //if (pickupDelivery == 0) // 乗車なら希望時刻まで待機
+                    //{
+                        long desiredPickupTime = Customers[customerIndex].DesiredTimeWindow[pickupDelivery];
+                        if (desiredPickupTime > currentTime)
+                        {
+                            currentTime = (int)desiredPickupTime;
+                        }
+                        currentStep.DepatureTime = currentTime;
+                    //}
 
                     // 累積負荷の計算など
                     if (currentStep.NodeIndex % 2 == 0)
@@ -167,6 +185,7 @@ namespace Simulator.MySearchAlgorithm
 
                     // 時間を進める
                     currentTime = currentStep.DepatureTime;
+                    previousStopId = convertStopId;
                 }
 
                 LastStep.Add(new RouteStep(vehicleId));
@@ -184,7 +203,10 @@ namespace Simulator.MySearchAlgorithm
             AppendCSVSolutionData();
         }
 
-        public long ObjectiveFunctionRoutingLengh()
+
+        // 目的関数群
+
+        public long ObjectiveFunctionFinishTime() // デマンド達成時刻
         {
             long res = 0;
             for (int vehicleId = 0;  vehicleId < VehicleRoutes.Count; vehicleId++)
@@ -193,7 +215,44 @@ namespace Simulator.MySearchAlgorithm
             }
             return res;
         }
-        public long ObjectiveFunctionTotalDelay()
+        public long ObjectiveFunctionDryRun() // 空走距離
+        {
+            long res = 0;
+            for (int vehicleId = 0; vehicleId < VehicleRoutes.Count; vehicleId++)
+            {
+                int prevCumulaative = 0;
+                int prevDepatureTime = 0;
+                for (int stepId = 0; stepId < VehicleRoutes[vehicleId].Count; stepId++)
+                {
+                    RouteStep currentStep = VehicleRoutes[vehicleId][stepId];
+                    if (prevCumulaative == 0)
+                    {
+                        res += currentStep.ArrivalTime - prevDepatureTime;
+                    }
+                    prevDepatureTime = currentStep.DepatureTime;
+                    prevCumulaative = currentStep.CumulativeLoad;
+                }
+            }
+            return res;
+        }
+
+        public long ObjectiveFunctionRouteLength() // 経路長: TD
+        {
+            long res = 0;
+            for (int vehicleId = 0; vehicleId < VehicleRoutes.Count; vehicleId++)
+            {
+                int prevDepatureTime = 0;
+                for (int stepId = 0; stepId < VehicleRoutes[vehicleId].Count; stepId++)
+                {
+                    RouteStep currentStep = VehicleRoutes[vehicleId][stepId];
+                    res += currentStep.ArrivalTime - prevDepatureTime;
+                    prevDepatureTime = currentStep.DepatureTime;
+                }
+            }
+            return res;
+        }
+
+        public long ObjectiveFunctionTotalDelay() // 遅延時間: TDT
         {
             long res = 0;
             for (int customerId = 0; customerId < Customers.Count; customerId++)
@@ -202,7 +261,7 @@ namespace Simulator.MySearchAlgorithm
             }
             return res;
         }
-        public long ObjectiveFunctionTotalWait()
+        public long ObjectiveFunctionTotalWait() // 待ち時間: TWT
         {
             long res = 0;
             for (int customerId = 0; customerId < Customers.Count; customerId++)
@@ -211,15 +270,28 @@ namespace Simulator.MySearchAlgorithm
             }
             return res;
         }
+        
+
 
         // アランニャ先生からアドバイスいただいた内容
-        public void VisualTextSimulateResult(int Id)
+        public void VisualTextSimulateResult(int Id, string directory)
         {
-            string path = "simulate" + Id + ".txt";
-            string path2 = "simulate" + Id + ".csv";
+            /*
+            string path = directory + "/simulate" + Id + ".txt";
+            string path2 = directory + "/simulate" + Id + ".csv";
 
             using (StreamWriter writer = new StreamWriter(path, append: false)) // append: true で追記
             {
+                writer.WriteLine("Objective Functions:");
+                for (int index = 0; index < ObjectiveFunctions.Count; index++)
+                {
+                    writer.Write(ObjectiveFunctions[index]);
+                    if (index != ObjectiveFunctions.Count - 1)
+                    {
+                        writer.Write(",");
+                    }
+                }
+                writer.WriteLine();
 
                 writer.WriteLine("Vehicle Route Info:");
 
@@ -258,6 +330,16 @@ namespace Simulator.MySearchAlgorithm
             }
             using (StreamWriter writer = new StreamWriter(path2, append: false)) // append: true で追記
             {
+                writer.WriteLine("Objective Functions:");
+                for (int index = 0; index < ObjectiveFunctions.Count; index++)
+                {
+                    writer.Write(ObjectiveFunctions[index]);
+                    if (index != ObjectiveFunctions.Count - 1)
+                    {
+                        writer.Write(",");
+                    }
+                }
+                writer.WriteLine();
 
                 writer.WriteLine("Vehicle Route Info:");
 
@@ -284,11 +366,16 @@ namespace Simulator.MySearchAlgorithm
                     cnt++;
                 }
             }
-
+            */
         }
 
         public void AppendCSVSolutionData()
         {
+            if (First == 1)
+            {
+                First = 0;
+                WirteFirstLine();
+            }
             using (StreamWriter writer = new StreamWriter(path, append: true)) // append: true で追記
             {
                 string tmp = "";
