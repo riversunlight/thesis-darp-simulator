@@ -18,12 +18,15 @@ namespace Simulator.MySearchAlgorithm
         public Dictionary<int, int> NodeToVehicleMap { get; set; }
 
         public Dictionary<int, long> ObjectiveFunctions;
+        public Dictionary<int, long> Indicators;
+
         public List<Customer> Customers;
         public List<RouteStep> LastStep;
         public int[] gene;
         public int myEvalCnt;
         public int Id;
         public static string path;
+        public static string ObjCase;
         public static int evalCnt;
         public static int geneCnt;
         public static int First;
@@ -32,11 +35,13 @@ namespace Simulator.MySearchAlgorithm
             VehicleRoutes = new Dictionary<int, List<RouteStep>>();
             NodeToVehicleMap = new Dictionary<int, int>();
             ObjectiveFunctions = new Dictionary<int, long>();
+            Indicators = new Dictionary<int, long>();
             Customers = new List<Customer>();
             LastStep  = new List<RouteStep>();
             gene = new int[customer_num * 2];
             myEvalCnt = -1;
         }
+
 
         public MyAssignment(MyAssignment old)
         {
@@ -67,10 +72,17 @@ namespace Simulator.MySearchAlgorithm
         }
         public void setPath(string _path)
         {
+            resetEvalCnt();
             path = _path;
             First = 1;
             
         }
+        public void setObjCase(string _objCase)
+        {
+            ObjCase = _objCase;
+
+        }
+
         public void WirteFirstLine()
         {
             using (StreamWriter writer = new StreamWriter(path, append: false))
@@ -84,7 +96,10 @@ namespace Simulator.MySearchAlgorithm
                 {
                     tmp += ",Gene" + i;
                 }
-
+                for (int i = 0; i < Indicators.Count; i++)
+                {
+                    tmp += ",Indicator" + i;
+                }
                 writer.WriteLine(tmp);
             }
 
@@ -98,8 +113,35 @@ namespace Simulator.MySearchAlgorithm
 
         public void SetObjects()
         {
-            ObjectiveFunctions[0] = ObjectiveFunctionFinishTime();
-            ObjectiveFunctions[1] = ObjectiveFunctionDryRun();
+            switch (ObjCase)
+            {
+                case "GA_TD":
+                    ObjectiveFunctions[0] = ObjectiveFunctionRouteLength();
+                    break;
+                case "GA_TDT":
+                    ObjectiveFunctions[0] = ObjectiveFunctionTotalDelay();
+                    break;
+                case "GA_HALF":
+                    ObjectiveFunctions[0] = (long)Math.Round(0.5 * ObjectiveFunctionTotalDelay() + 0.5 * ObjectiveFunctionRouteLength());
+                    break;
+                case "NSGA_TDTDT":
+                    ObjectiveFunctions[0] = ObjectiveFunctionRouteLength();
+                    ObjectiveFunctions[1] = ObjectiveFunctionTotalDelay();
+                    break;
+                default:
+                    ObjectiveFunctions[0] = ObjectiveFunctionFinishTime();
+                    ObjectiveFunctions[1] = ObjectiveFunctionDryRun();
+                    break;
+            }
+        }
+
+        public void SetIndicators()
+        {
+            Indicators[0] = ObjectiveFunctionRouteLength();
+            Indicators[1] = ObjectiveFunctionTotalWait();
+            Indicators[2] = ObjectiveFunctionTotalDelay();
+            Indicators[3] = ObjectiveFunctionDryRun();
+            Indicators[4] = ObjectiveFunctionFinishTime();
         }
 
 
@@ -195,6 +237,7 @@ namespace Simulator.MySearchAlgorithm
 
             }
             SetObjects();
+            SetIndicators();
         }
 
         public void SetId(int _id)
@@ -392,6 +435,10 @@ namespace Simulator.MySearchAlgorithm
                 for (int i = 0; i < gene.Length; i++)
                 {
                     tmp += "," + gene[i];
+                }
+                for (int i = 0; i < Indicators.Count; i++)
+                {
+                    tmp += "," + Indicators[i];
                 }
                 writer.WriteLine(tmp);
             }

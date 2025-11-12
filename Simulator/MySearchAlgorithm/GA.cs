@@ -23,12 +23,13 @@ namespace Simulator.MySearchAlgorithm
         {
         }        
 
-        public override MyAssignment TryGetSolution()
+        public override MyAssignment TryGetSolution(string path, string objCase)
         {
             sw = Stopwatch.StartNew();
 
             MyAssignment dummy = new MyAssignment(0);
-            dummy.setPath("GA.csv");
+            dummy.setPath(path);
+            dummy.setObjCase(objCase);
             dummy.setGeneCnt(0);
 
             InitialPopulation();
@@ -36,7 +37,6 @@ namespace Simulator.MySearchAlgorithm
             while(StoppingCondition() == 0)
             {
                 CrossOver();
-                for (int i = 0; i < offspring_size; i++) offspring[i].Simulate(DataModel);
                 SelectSurvivor();
                 generationCnt++;
                 dummy.setGeneCnt(generationCnt);

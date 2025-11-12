@@ -147,12 +147,13 @@ namespace Simulator.MySearchAlgorithm
         }
 
 
-        public override MyAssignment TryGetSolution()
+        public override MyAssignment TryGetSolution(string path, string objCase)
         {
             sw = Stopwatch.StartNew();
 
             MyAssignment dummy = new MyAssignment(0);
-            dummy.setPath("NSGA.csv");
+            dummy.setPath(path);
+            dummy.setObjCase(objCase);
             dummy.setGeneCnt(0);
             SettingsParameter();
             InitialPopulation();

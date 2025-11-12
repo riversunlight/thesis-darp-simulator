@@ -52,7 +52,7 @@ namespace Simulator.MySearchAlgorithm
             randomCreater = new Random();
             FirstWrited = 0;
             SolutionId = 0;
-            limitSeconds = 180;
+            limitSeconds = 240;
             MyAssignment dummy = new MyAssignment(1);
             dummy.resetEvalCnt();
 
@@ -283,9 +283,9 @@ namespace Simulator.MySearchAlgorithm
                                         }
                                     }
                                     tempSolution.Simulate(DataModel);
-                                    if (tempSolution.ObjectiveFunctions[1] < bestScore)
+                                    if (tempSolution.ObjectiveFunctionRouteLength() < bestScore)
                                     {
-                                        bestScore = tempSolution.ObjectiveFunctionFinishTime();
+                                        bestScore = tempSolution.ObjectiveFunctionRouteLength();
                                         bestChildGene = new List<int>(childGeneList);
                                     }
                                     childGeneList.RemoveAt(deliveryPoint);
@@ -313,7 +313,7 @@ namespace Simulator.MySearchAlgorithm
 
         public virtual void CrossOver()
         {
-            CrossOverPPX();
+            CrossOverViana();
         }
 
         // 一様にするか
@@ -456,11 +456,12 @@ namespace Simulator.MySearchAlgorithm
         }
 
 
-        public virtual MyAssignment TryGetSolution()
+        public virtual MyAssignment TryGetSolution(string path, string objCase)
         {
             sw = Stopwatch.StartNew();
             MyAssignment dummy = new MyAssignment(0);
-            dummy.setPath("BaseGA.csv");
+            dummy.setPath(path);
+            dummy.setObjCase(objCase);
             dummy.setGeneCnt(0);
 
             InitialPopulation();

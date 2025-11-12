@@ -273,22 +273,31 @@ namespace Simulator.Objects.Data_Objects.Routing
             return searchParameters;
         }
 
+        public void PreExpSingleMulti()
+        {
+            NSGA nsga = new NSGA(RoutingModel, RoutingIndexManager, DataModel);
+            GA ga_td = new GA(RoutingModel, RoutingIndexManager, DataModel);
+            GA ga_tdt = new GA(RoutingModel, RoutingIndexManager, DataModel);
+            GA ga_half = new GA(RoutingModel, RoutingIndexManager, DataModel);
+            ga_td.TryGetSolution("PreExpSingleMulti_GA_TD.csv", "GA_TD");
+            nsga.TryGetSolution("PreExpSingleMulti_NSGA.csv", "NSGA_TDTDT");
+            ga_tdt.TryGetSolution("PreExpSingleMulti_GA_TDT.csv", "GA_TDT");
+            ga_half.TryGetSolution("PreExpSingleMulti_GA_HALF.csv", "GA_HALF");
+
+        }
+
 
 
         public Assignment TryGetSolution(RoutingSearchParameters searchParameters)
         {
             Assignment solution = null;
             
-
-            MyAssignment mysolution = null;
-            MyAssignment mysolution2 = null;
-            MyAssignment mysolution3 = null;
-
             if (searchParameters == null)
             {
                 searchParameters = GetDefaultSearchParameters();
             }
             //for loop that tries to find the earliest feasible solution (trying to minimize the maximum upper bound) within a maximum delay delivery time (upper bound), using the current customer requests
+            //for (int currentMaximumDelayTime = 0; currentMaximumDelayTime < DataModel.MaxAllowedDeliveryDelayTime; currentMaximumDelayTime = currentMaximumDelayTime + 60) //iterates adding 1 minute to maximum allowed timeWindow (60 seconds) if a feasible solution isnt found for the current upperbound
             for (int currentMaximumDelayTime = 0; currentMaximumDelayTime < DataModel.MaxAllowedDeliveryDelayTime; currentMaximumDelayTime = currentMaximumDelayTime + 60) //iterates adding 1 minute to maximum allowed timeWindow (60 seconds) if a feasible solution isnt found for the current upperbound
             {
                 MaximumDeliveryDelayTime = currentMaximumDelayTime;
@@ -321,12 +330,16 @@ namespace Simulator.Objects.Data_Objects.Routing
                     //mysolution = my_random_solver.TryGetSolution();
                     //GA gaSolver = new GA(RoutingModel, RoutingIndexManager, DataModel);
                     //mysolution2 = gaSolver.TryGetSolution();
-                    NSGA nsgaSolver = new NSGA(RoutingModel, RoutingIndexManager, DataModel);
-                    mysolution3 = nsgaSolver.TryGetSolution();
+                    //NSGA nsgaSolver = new NSGA(RoutingModel, RoutingIndexManager, DataModel);
+                    //mysolution3 = nsgaSolver.TryGetSolution();
+
+                    // Call Experiment Data
+                    PreExpSingleMulti();
+                    
                     Console.WriteLine("Finish!");
                     Thread.Sleep(20000);
                     Console.WriteLine("Already!");
-                    solution = RoutingModel.SolveWithParameters(searchParameters);
+                    //solution = RoutingModel.SolveWithParameters(searchParameters);
                     
 
                 }

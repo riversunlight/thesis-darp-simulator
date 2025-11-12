@@ -83,11 +83,12 @@ namespace Simulator.MySearchAlgorithm
         }
         
         
-        public override MyAssignment TryGetSolution()
+        public override MyAssignment TryGetSolution(string path, string objCase)
         {
             // 評価回数リセット
             MyAssignment dummy = new MyAssignment(CustomerNum);
-            dummy.setPath("RandomAlgoSolution.csv");
+            dummy.setPath(path);
+            dummy.setObjCase(objCase);
             dummy.resetEvalCnt();
             SettingsParameter();
 
