@@ -29,6 +29,17 @@ namespace Simulator.MySearchAlgorithm
             offspring_size = 100;
         }
 
+        public bool IsDominated(MyAssignment a, MyAssignment b)
+        {
+            bool res = true;
+
+            for (int i = 0; i < a.ObjectiveFunctions.Count; i++)
+            {
+                res &= a.ObjectiveFunctions[i] < a.ObjectiveFunctions[i];
+            }
+            return res;
+        }
+
 
         // 生存者選択: 支配度からランクを割り出し、ランク0を次の親世代に入れる。
         public override void SelectSurvivor()
@@ -49,14 +60,12 @@ namespace Simulator.MySearchAlgorithm
             {
                 for (int j = 0; j < allCandidates.Count; j++)
                 {
-                    if (allCandidates[i].ObjectiveFunctions[0] < allCandidates[j].ObjectiveFunctions[0]
-                        && allCandidates[i].ObjectiveFunctions[1] < allCandidates[j].ObjectiveFunctions[1])
+                    if (IsDominated(allCandidates[i], allCandidates[j]))
                     {
                         dominatedNum[j] += 1;
                         edges[i].Add(j);
                     }
-                    if (allCandidates[j].ObjectiveFunctions[0] < allCandidates[i].ObjectiveFunctions[0]
-                        && allCandidates[j].ObjectiveFunctions[1] < allCandidates[i].ObjectiveFunctions[1])
+                    if (IsDominated(allCandidates[j], allCandidates[i]))
                     {
                         dominatedNum[i] += 1;
                         edges[j].Add(i);
@@ -147,14 +156,16 @@ namespace Simulator.MySearchAlgorithm
         }
 
 
-        public override MyAssignment TryGetSolution(string path, string objCase)
+        public override MyAssignment TryGetSolution(string path, string objCase, string _crossOver)
         {
             sw = Stopwatch.StartNew();
+            crossOverKind = _crossOver;
 
             MyAssignment dummy = new MyAssignment(0);
             dummy.setPath(path);
             dummy.setObjCase(objCase);
             dummy.setGeneCnt(0);
+            dummy.resetEvalCnt();
             SettingsParameter();
             InitialPopulation();
             generationCnt++; // 初期化を0世代とするため。
@@ -167,10 +178,14 @@ namespace Simulator.MySearchAlgorithm
                 dummy.setGeneCnt(generationCnt);
             }
             MyAssignment solution = population[0];
-
-            for (int i = 0; i < population_size; i++)
+            int simCnt = population_size;
+            if (simCnt >= 10)
             {
-                population[i].VisualTextSimulateResult(i, "NSGA");
+                simCnt = 10;
+            }
+            for (int i = 0; i < simCnt; i++)
+            {
+                population[i].VisualTextSimulateResult(i, "NSGA", DataModel);
             }
 
             return solution;

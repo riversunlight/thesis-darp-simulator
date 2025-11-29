@@ -23,14 +23,18 @@ namespace Simulator.MySearchAlgorithm
         {
         }        
 
-        public override MyAssignment TryGetSolution(string path, string objCase)
+        public override MyAssignment TryGetSolution(string path, string objCase, string _crossOver)
         {
             sw = Stopwatch.StartNew();
+            crossOverKind = _crossOver;
+
 
             MyAssignment dummy = new MyAssignment(0);
             dummy.setPath(path);
             dummy.setObjCase(objCase);
             dummy.setGeneCnt(0);
+            dummy.resetEvalCnt();
+
 
             InitialPopulation();
 
@@ -45,7 +49,7 @@ namespace Simulator.MySearchAlgorithm
 
             for (int i = 0; i < population_size; i++)
             {
-                population[i].VisualTextSimulateResult(i, "GA");
+                population[i].VisualTextSimulateResult(i, "GA", DataModel);
             }
 
 

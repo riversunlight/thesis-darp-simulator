@@ -279,10 +279,38 @@ namespace Simulator.Objects.Data_Objects.Routing
             GA ga_td = new GA(RoutingModel, RoutingIndexManager, DataModel);
             GA ga_tdt = new GA(RoutingModel, RoutingIndexManager, DataModel);
             GA ga_half = new GA(RoutingModel, RoutingIndexManager, DataModel);
-            ga_td.TryGetSolution("PreExpSingleMulti_GA_TD.csv", "GA_TD");
-            nsga.TryGetSolution("PreExpSingleMulti_NSGA.csv", "NSGA_TDTDT");
-            ga_tdt.TryGetSolution("PreExpSingleMulti_GA_TDT.csv", "GA_TDT");
-            ga_half.TryGetSolution("PreExpSingleMulti_GA_HALF.csv", "GA_HALF");
+            ga_td.TryGetSolution("PreExpSingleMulti_GA_TD.csv", "GA_TD", "Viana");
+            nsga.TryGetSolution("PreExpSingleMulti_NSGA.csv", "NSGA_TDTDT", "Viana");
+            ga_tdt.TryGetSolution("PreExpSingleMulti_GA_TDT.csv", "GA_TDT", "Viana");
+            ga_half.TryGetSolution("PreExpSingleMulti_GA_HALF.csv", "GA_HALF", "Viana");
+
+        }
+
+        public void PreExpDebug()
+        {
+            NSGA nsga = new NSGA(RoutingModel, RoutingIndexManager, DataModel);
+            nsga.TryGetSolution("VianaFast.csv", "NSGA_TDTDT", "VianaFast");
+        }
+
+        public void PreExpInsert()
+        {
+            BestInsert bi = new BestInsert(RoutingModel, RoutingIndexManager, DataModel);
+            bi.TryGetSolution("BestInsert.csv", "NSGA_TDTDT", "?");
+
+            NSGA nsga = new NSGA(RoutingModel, RoutingIndexManager, DataModel);
+            nsga.TryGetSolution("Insert_NSGA.csv", "NSGA_TDTDT", "VianaFast"); 
+
+            RandomAlgo ra = new RandomAlgo(RoutingModel, RoutingIndexManager, DataModel);
+            ra.TryGetSolution("Insert_Random.csv", "NSGA_TDTDT", "?");
+        }
+
+        public void PreExpRideNum()
+        {
+            NSGA nsga1 = new NSGA(RoutingModel, RoutingIndexManager, DataModel);
+            nsga1.TryGetSolution("RideTD.csv", "NSGA_TDCUML", "VianaFast");
+
+            NSGA nsga2 = new NSGA(RoutingModel, RoutingIndexManager, DataModel);
+            nsga2.TryGetSolution("RideTDT.csv", "NSGA_TDTCUML", "VianaFast");
 
         }
 
@@ -334,7 +362,7 @@ namespace Simulator.Objects.Data_Objects.Routing
                     //mysolution3 = nsgaSolver.TryGetSolution();
 
                     // Call Experiment Data
-                    PreExpSingleMulti();
+                    PreExpRideNum();
                     
                     Console.WriteLine("Finish!");
                     Thread.Sleep(20000);

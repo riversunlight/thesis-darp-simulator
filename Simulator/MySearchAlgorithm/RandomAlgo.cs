@@ -83,8 +83,9 @@ namespace Simulator.MySearchAlgorithm
         }
         
         
-        public override MyAssignment TryGetSolution(string path, string objCase)
+        public override MyAssignment TryGetSolution(string path, string objCase, string _crossOver)
         {
+            crossOverKind = _crossOver;
             // 評価回数リセット
             MyAssignment dummy = new MyAssignment(CustomerNum);
             dummy.setPath(path);
@@ -102,7 +103,7 @@ namespace Simulator.MySearchAlgorithm
             PrintStaticsData();
             for (int i  = 0; i < population_size; i++)
             {
-                population[i].VisualTextSimulateResult(i, "Random");
+                population[i].VisualTextSimulateResult(i, "Random", DataModel);
             }
             
 

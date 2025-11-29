@@ -11,6 +11,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.IO;
 using System.Diagnostics;
+using Simulator.Objects.Data_Objects.Simulation_Objects;
 
 // 基底クラス
 // シミュレータは絶対にInitの直後でTryGetSolutionを使うようにすること!!!
@@ -25,6 +26,7 @@ namespace Simulator.MySearchAlgorithm
         public RoutingDataModel DataModel;
         public int population_size;
         public int offspring_size;
+        public string crossOverKind;
         public List<MyAssignment> population;
         public List<MyAssignment> offspring;
         public int generationCnt;
@@ -52,7 +54,7 @@ namespace Simulator.MySearchAlgorithm
             randomCreater = new Random();
             FirstWrited = 0;
             SolutionId = 0;
-            limitSeconds = 240;
+            limitSeconds = 60;
             MyAssignment dummy = new MyAssignment(1);
             dummy.resetEvalCnt();
 
@@ -311,9 +313,339 @@ namespace Simulator.MySearchAlgorithm
             }
         }
 
+        public int ConvertIndex2LStopId(int vehicle_count, int index)
+        {
+            return 2 * vehicle_count + index;
+        }
+        public void CrossOverVianaFast() // Viana: 最適挿入のところを高速化
+        {
+            offspring = new List<MyAssignment>();
+            for (int i = 0; i < offspring_size / 2; i++)
+            {
+                int p1 = -1, p2 = -1;
+                SelectParent(ref p1, ref p2);
+                int[] p1_gene = population[p1].gene;
+                int[] p2_gene = population[p2].gene;
+
+                for (int j = 0; j < 2; j++)
+                {
+                    int[] parentA = (j == 0) ? p1_gene : p2_gene;
+                    int[] parentB = (j == 0) ? p2_gene : p1_gene;
+
+                    List<int> childGeneList = new List<int>();
+                    int cutPoint = randomCreater.Next(1, parentA.Length);
+
+                    for (int k = 0; k < p1_gene.Length; k++)
+                    {
+                        if (k < cutPoint)
+                        {
+                            childGeneList.Add(parentA[k]);
+                        }
+                        else
+                        {
+                            childGeneList.Add(parentB[k]);
+                        }
+                    }
+                    HashSet<int> insertedPickupRequestIDs = new HashSet<int>();
+                    HashSet<int> insertedDeliveryRequestIDs = new HashSet<int>();
+
+                    List<int> toBeRemoved = new List<int>();
+                    for (int k = 0; k < childGeneList.Count; k++)
+                    {
+                        int customerId = childGeneList[k] / 2;
+                        int pickupDelivery = childGeneList[k] % 2;
+                        if (pickupDelivery == 0)
+                        {
+                            if (insertedPickupRequestIDs.Contains(customerId))
+                            {
+                                toBeRemoved.Add(k);
+                                continue;
+                            }
+                            insertedPickupRequestIDs.Add(customerId);
+                        }
+                        else
+                        {
+                            if (!insertedPickupRequestIDs.Contains(customerId))
+                            {
+                                toBeRemoved.Add(k);
+                                continue;
+                            }
+                            if (insertedDeliveryRequestIDs.Contains(customerId))
+                            {
+                                toBeRemoved.Add(k);
+                                continue;
+                            }
+                            insertedDeliveryRequestIDs.Add(customerId);
+                        }
+                    }
+                    for (int k = toBeRemoved.Count - 1; k >= 0; k--)
+                    {
+                        childGeneList.RemoveAt(toBeRemoved[k]);
+                    }
+                    foreach (int customerId in insertedPickupRequestIDs)
+                    {
+                        if (!insertedDeliveryRequestIDs.Contains(customerId))
+                        { // PickUpしか入っていないやつ
+                            childGeneList.Remove(customerId * 2);
+
+                        }
+                    }
+
+                    // 最適挿入(単純な距離基準)
+                    for (int customerId = 0; customerId < p1_gene.Length / 2; customerId++)
+                    {
+                        if (!insertedDeliveryRequestIDs.Contains(customerId))
+                        {
+                            long bestScore = 100000000;
+                            int bestPickPoint = -1, bestDeliveryPoint = -1;
+                            int customerPickupStopId = ConvertIndex2LStopId(VehicleNum, customerId * 2);
+                            int customerDeliveryStopId = ConvertIndex2LStopId(VehicleNum, customerId * 2 + 1);
+                            for (int pickupPoint = 0; pickupPoint <= childGeneList.Count; pickupPoint++)
+                            {
+                                int previousStopId = DataModel.Starts[0]; // 車両1台のみの前提
+                                int nextStopId = DataModel.Ends[0];
+                                if (pickupPoint != 0)
+                                {
+                                    previousStopId = ConvertIndex2LStopId(VehicleNum, childGeneList[pickupPoint - 1]);
+                                }
+                                if (pickupPoint != childGeneList.Count)
+                                {
+                                    nextStopId = ConvertIndex2LStopId(VehicleNum, childGeneList[pickupPoint]);
+                                }
+
+
+                                long dist = DataModel.TravelTimes[previousStopId, customerPickupStopId] + DataModel.TravelTimes[customerPickupStopId, nextStopId] - DataModel.TravelTimes[previousStopId, nextStopId];
+
+                                if (dist < bestScore)
+                                {
+                                    bestScore = dist;
+                                    bestPickPoint = pickupPoint;
+                                }
+                            }
+                            if (bestPickPoint == -1)
+                            {
+                                int a;
+                                a = 10;
+                            }
+                            childGeneList.Insert(bestPickPoint, customerId * 2);
+
+                            bestScore = 10000000000;
+
+                            for (int deliveryPoint = bestPickPoint + 1; deliveryPoint <= childGeneList.Count; deliveryPoint++) {
+                                int previousStopId = DataModel.Starts[0]; // 車両1台のみの前提
+                                int nextStopId = DataModel.Ends[0];
+                                if (deliveryPoint != 0)
+                                {
+                                    previousStopId = ConvertIndex2LStopId(VehicleNum, childGeneList[deliveryPoint - 1]);
+                                }
+                                if (deliveryPoint != childGeneList.Count)
+                                {
+                                    nextStopId = ConvertIndex2LStopId(VehicleNum, childGeneList[deliveryPoint]);
+                                }
+                                long dist = DataModel.TravelTimes[previousStopId, customerDeliveryStopId] + DataModel.TravelTimes[customerDeliveryStopId, nextStopId] - DataModel.TravelTimes[previousStopId, nextStopId];
+
+                                if (dist < bestScore)
+                                {
+                                    bestScore = dist;
+                                    bestDeliveryPoint = deliveryPoint;
+                                }
+                            }
+
+                            if (bestDeliveryPoint == -1)
+                            {
+                                int a;
+                                a = 10;
+                            }
+                            childGeneList.Insert(bestDeliveryPoint, customerId * 2 + 1);
+                        }
+                    }
+
+                    MyAssignment offspringSolution = new MyAssignment(CustomerNum);
+                    for (int k = 0; k < 2 * CustomerNum; k++)
+                    {
+                        offspringSolution.gene[k] = childGeneList[k];
+                    }
+                    Mutate(ref offspringSolution);
+                    offspringSolution.Simulate(DataModel);
+                    offspringSolution.SetId(GiveId());
+                    offspring.Add(offspringSolution);
+                }
+
+            }
+        }
+
+        public void CrossOverVianaFastMulti() // Viana: 最適挿入のところを高速化
+        {
+            offspring = new List<MyAssignment>();
+            for (int i = 0; i < offspring_size / 2; i++)
+            {
+                int p1 = -1, p2 = -1;
+                SelectParent(ref p1, ref p2);
+                int[] p1_gene = population[p1].gene;
+                int[] p2_gene = population[p2].gene;
+
+                for (int j = 0; j < 2; j++)
+                {
+                    int[] parentA = (j == 0) ? p1_gene : p2_gene;
+                    int[] parentB = (j == 0) ? p2_gene : p1_gene;
+
+                    List<int> childGeneList = new List<int>();
+                    int cutPoint = randomCreater.Next(1, parentA.Length);
+
+                    for (int k = 0; k < p1_gene.Length; k++)
+                    {
+                        if (k < cutPoint)
+                        {
+                            childGeneList.Add(parentA[k]);
+                        }
+                        else
+                        {
+                            childGeneList.Add(parentB[k]);
+                        }
+                    }
+                    HashSet<int> insertedPickupRequestIDs = new HashSet<int>();
+                    HashSet<int> insertedDeliveryRequestIDs = new HashSet<int>();
+
+                    List<int> toBeRemoved = new List<int>();
+                    for (int k = 0; k < childGeneList.Count; k++)
+                    {
+                        int customerId = childGeneList[k] / 2;
+                        int pickupDelivery = childGeneList[k] % 2;
+                        if (pickupDelivery == 0)
+                        {
+                            if (insertedPickupRequestIDs.Contains(customerId))
+                            {
+                                toBeRemoved.Add(k);
+                                continue;
+                            }
+                            insertedPickupRequestIDs.Add(customerId);
+                        }
+                        else
+                        {
+                            if (!insertedPickupRequestIDs.Contains(customerId))
+                            {
+                                toBeRemoved.Add(k);
+                                continue;
+                            }
+                            if (insertedDeliveryRequestIDs.Contains(customerId))
+                            {
+                                toBeRemoved.Add(k);
+                                continue;
+                            }
+                            insertedDeliveryRequestIDs.Add(customerId);
+                        }
+                    }
+                    for (int k = toBeRemoved.Count - 1; k >= 0; k--)
+                    {
+                        childGeneList.RemoveAt(toBeRemoved[k]);
+                    }
+                    foreach (int customerId in insertedPickupRequestIDs)
+                    {
+                        if (!insertedDeliveryRequestIDs.Contains(customerId))
+                        { // PickUpしか入っていないやつ
+                            childGeneList.Remove(customerId * 2);
+
+                        }
+                    }
+
+                    // 最適挿入(単純な距離基準)
+                    for (int customerId = 0; customerId < CustomerNum; customerId++)
+                    {
+                        if (!insertedDeliveryRequestIDs.Contains(customerId))
+                        {
+                            long bestScore = 100000000;
+                            int bestPickPoint = -1, bestDeliveryPoint = -1;
+                            int customerPickupStopId = ConvertIndex2LStopId(VehicleNum, customerId * 2);
+                            int customerDeliveryStopId = ConvertIndex2LStopId(VehicleNum, customerId * 2 + 1);
+                            for (int pickupPoint = 0; pickupPoint <= childGeneList.Count; pickupPoint++)
+                            {
+                                int previousStopId = DataModel.Starts[0]; // 車両1台のみの前提
+                                int nextStopId = DataModel.Ends[0];
+                                if (pickupPoint != 0)
+                                {
+                                    previousStopId = ConvertIndex2LStopId(VehicleNum, childGeneList[pickupPoint - 1]);
+                                }
+                                if (pickupPoint != childGeneList.Count)
+                                {
+                                    nextStopId = ConvertIndex2LStopId(VehicleNum, childGeneList[pickupPoint]);
+                                }
+
+
+                                long dist = DataModel.TravelTimes[previousStopId, customerPickupStopId] + DataModel.TravelTimes[customerPickupStopId, nextStopId] - DataModel.TravelTimes[previousStopId, nextStopId];
+
+                                if (dist < bestScore)
+                                {
+                                    bestScore = dist;
+                                    bestPickPoint = pickupPoint;
+                                }
+                            }
+                            if (bestPickPoint == -1)
+                            {
+                                int a;
+                                a = 10;
+                            }
+                            childGeneList.Insert(bestPickPoint, customerId * 2);
+
+                            bestScore = 10000000000;
+
+                            for (int deliveryPoint = bestPickPoint + 1; deliveryPoint <= childGeneList.Count; deliveryPoint++)
+                            {
+                                int previousStopId = DataModel.Starts[0]; // 車両1台のみの前提
+                                int nextStopId = DataModel.Ends[0];
+                                if (deliveryPoint != 0)
+                                {
+                                    previousStopId = ConvertIndex2LStopId(VehicleNum, childGeneList[deliveryPoint - 1]);
+                                }
+                                if (deliveryPoint != childGeneList.Count)
+                                {
+                                    nextStopId = ConvertIndex2LStopId(VehicleNum, childGeneList[deliveryPoint]);
+                                }
+                                long dist = DataModel.TravelTimes[previousStopId, customerDeliveryStopId] + DataModel.TravelTimes[customerDeliveryStopId, nextStopId] - DataModel.TravelTimes[previousStopId, nextStopId];
+
+                                if (dist < bestScore)
+                                {
+                                    bestScore = dist;
+                                    bestDeliveryPoint = deliveryPoint;
+                                }
+                            }
+
+                            if (bestDeliveryPoint == -1)
+                            {
+                                int a;
+                                a = 10;
+                            }
+                            childGeneList.Insert(bestDeliveryPoint, customerId * 2 + 1);
+                        }
+                    }
+
+                    MyAssignment offspringSolution = new MyAssignment(CustomerNum);
+                    for (int k = 0; k < 2 * CustomerNum; k++)
+                    {
+                        offspringSolution.gene[k] = childGeneList[k];
+                    }
+                    Mutate(ref offspringSolution);
+                    offspringSolution.Simulate(DataModel);
+                    offspringSolution.SetId(GiveId());
+                    offspring.Add(offspringSolution);
+                }
+
+            }
+        }
+
         public virtual void CrossOver()
         {
-            CrossOverViana();
+            switch (crossOverKind)
+            {
+                case "VianaFast":
+                    CrossOverVianaFast();
+                    break;
+                case "Viana":
+                    CrossOverViana();
+                    break;
+                default:
+                    CrossOverViana();
+                    break;
+            }
         }
 
         // 一様にするか
@@ -357,6 +689,141 @@ namespace Simulator.MySearchAlgorithm
             }
         }
 
+        public virtual void FixOtherCar(ref int[] gene) {
+            List<int> childGeneList = new List<int>();
+
+            for (int k = 0; k < gene.Length; k++)
+            {
+                childGeneList.Add(gene[k]);
+            }
+            HashSet<int> insertedPickupRequestIDs = new HashSet<int>();
+            HashSet<int> insertedDeliveryRequestIDs = new HashSet<int>();
+
+            List<int> toBeRemoved = new List<int>();
+            for (int i = 0; i < childGeneList.Count; i++)
+            {
+                if (childGeneList[i] == -1)
+                {
+                    for (int k = toBeRemoved.Count - 1; k >= 0; k--)
+                    {
+                        childGeneList.RemoveAt(toBeRemoved[i]);
+                    }
+                    foreach (int pickupCustomerId in insertedPickupRequestIDs)
+                    {
+                        if (!insertedDeliveryRequestIDs.Contains(pickupCustomerId))
+                        { // PickUpしか入っていないやつ
+                            childGeneList.Remove(pickupCustomerId * 2);
+                        }
+                        if (!insertedDeliveryRequestIDs.Contains(pickupCustomerId))
+                        { // Deliveryしか入っていないやつ
+                            childGeneList.Remove(pickupCustomerId * 2);
+                        }
+                    }
+                    toBeRemoved = new List<int>();
+
+                    insertedPickupRequestIDs = new HashSet<int>();
+                    insertedDeliveryRequestIDs = new HashSet<int>();
+                    continue;
+                }
+                int customerId = childGeneList[i] / 2;
+                int pickupDelivery = childGeneList[i] % 2;
+                if (pickupDelivery == 0)
+                {
+                    if (insertedPickupRequestIDs.Contains(customerId))
+                    {
+                        toBeRemoved.Add(i);
+                        continue;
+                    }
+                    insertedPickupRequestIDs.Add(customerId);
+                }
+                else
+                {
+                    if (!insertedPickupRequestIDs.Contains(customerId))
+                    {
+                        toBeRemoved.Add(i);
+                        continue;
+                    }
+                    if (insertedDeliveryRequestIDs.Contains(customerId))
+                    {
+                        toBeRemoved.Add(i);
+                        continue;
+                    }
+                    insertedDeliveryRequestIDs.Add(customerId);
+                }
+            }
+            
+
+            // 最適挿入(単純な距離基準)
+            for (int customerId = 0; customerId < CustomerNum; customerId++)
+            {
+                if (!childGeneList.Contains(customerId * 2))
+                {
+                    long bestScore = 100000000;
+                    int bestPickPoint = -1, bestDeliveryPoint = -1;
+                    int customerPickupStopId = ConvertIndex2LStopId(VehicleNum, customerId * 2);
+                    int customerDeliveryStopId = ConvertIndex2LStopId(VehicleNum, customerId * 2 + 1);
+                    for (int pickupPoint = 0; pickupPoint <= childGeneList.Count; pickupPoint++)
+                    {
+                        int previousStopId = DataModel.Starts[0]; // 車両1台のみの前提
+                        int nextStopId = DataModel.Ends[0];
+                        if (pickupPoint != 0)
+                        {
+                            previousStopId = ConvertIndex2LStopId(VehicleNum, childGeneList[pickupPoint - 1]);
+                        }
+                        if (pickupPoint != childGeneList.Count)
+                        {
+                            nextStopId = ConvertIndex2LStopId(VehicleNum, childGeneList[pickupPoint]);
+                        }
+
+
+                        long dist = DataModel.TravelTimes[previousStopId, customerPickupStopId] + DataModel.TravelTimes[customerPickupStopId, nextStopId] - DataModel.TravelTimes[previousStopId, nextStopId];
+
+                        if (dist < bestScore)
+                        {
+                            bestScore = dist;
+                            bestPickPoint = pickupPoint;
+                        }
+                    }
+                    if (bestPickPoint == -1)
+                    {
+                        int a;
+                        a = 10;
+                    }
+                    childGeneList.Insert(bestPickPoint, customerId * 2);
+
+                    bestScore = 10000000000;
+
+                    for (int deliveryPoint = bestPickPoint + 1; deliveryPoint <= childGeneList.Count && childGeneList[deliveryPoint] != -1; deliveryPoint++)
+                    {
+                        int previousStopId = DataModel.Starts[0]; // 車両1台のみの前提
+                        int nextStopId = DataModel.Ends[0];
+                        if (deliveryPoint != 0)
+                        {
+                            previousStopId = ConvertIndex2LStopId(VehicleNum, childGeneList[deliveryPoint - 1]);
+                        }
+                        if (deliveryPoint != childGeneList.Count)
+                        {
+                            nextStopId = ConvertIndex2LStopId(VehicleNum, childGeneList[deliveryPoint]);
+                        }
+                        long dist = DataModel.TravelTimes[previousStopId, customerDeliveryStopId] + DataModel.TravelTimes[customerDeliveryStopId, nextStopId] - DataModel.TravelTimes[previousStopId, nextStopId];
+
+                        if (dist < bestScore)
+                        {
+                            bestScore = dist;
+                            bestDeliveryPoint = deliveryPoint;
+                        }
+                    }
+
+                    if (bestDeliveryPoint == -1)
+                    {
+                        int a;
+                        a = 10;
+                    }
+                    childGeneList.Insert(bestDeliveryPoint, customerId * 2 + 1);
+                }
+            }
+        }
+
         // 0, 1反転
         public virtual void FixRideOnOff(ref MyAssignment solution)
         {
@@ -369,6 +836,7 @@ namespace Simulator.MySearchAlgorithm
             {
                 for (int i = 0; i < solution.gene.Length; i++)
                 {
+                    if (solution.gene[i] == -1) continue; // 車両の区切り文字
                     int customerId = solution.gene[i] / 2; ;
                     int pickupOrDelivery = solution.gene[i] % 2;
                     if (pickupOrDelivery == 0)
@@ -419,10 +887,13 @@ namespace Simulator.MySearchAlgorithm
         public virtual void InitialPopulation()
         {
             population = new List<MyAssignment>();
-            int[] numbers = new int[CustomerNum * 2];
+            int[] numbers = new int[CustomerNum * 2 + VehicleNum - 1];
             for (int i = 0; i < CustomerNum * 2; i++)
             {
                 numbers[i] = i;
+            }
+            for (int i = 0; i < VehicleNum - 1; i++) {
+                numbers[CustomerNum * 2 + i] = -1; // 車両の区切り文字を挿入
             }
             for (int i = 0; i < population_size; i++)
             {
@@ -456,9 +927,10 @@ namespace Simulator.MySearchAlgorithm
         }
 
 
-        public virtual MyAssignment TryGetSolution(string path, string objCase)
+        public virtual MyAssignment TryGetSolution(string path, string objCase, string _crossOver)
         {
             sw = Stopwatch.StartNew();
+            crossOverKind = _crossOver;
             MyAssignment dummy = new MyAssignment(0);
             dummy.setPath(path);
             dummy.setObjCase(objCase);
