@@ -83,9 +83,13 @@ namespace Simulator.MySearchAlgorithm
         }
         
         
-        public override MyAssignment TryGetSolution(string path, string objCase, string _crossOver)
+        public override MyAssignment TryGetSolution(string path, string objCase, string _crossOver, string _mutateKind, string _initialKind)
         {
             crossOverKind = _crossOver;
+            mutateKind = _mutateKind;
+            initialKind = _initialKind;
+
+
             // 評価回数リセット
             MyAssignment dummy = new MyAssignment(CustomerNum);
             dummy.setPath(path);

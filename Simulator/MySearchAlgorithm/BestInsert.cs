@@ -179,10 +179,9 @@ namespace Simulator.MySearchAlgorithm
             }
 
 
-            firstSolution.VehicleRoutes[0] = new List<RouteStep>();
-            for (int j = 0; j < firstSolution.gene.Length; j++)
+            for (int j = 0; j < childGeneList.Count; j++)
             {
-                firstSolution.gene[j] = childGeneList[j];
+                firstSolution.gene[0].Add(childGeneList[j]);
             }
             firstSolution.Simulate(DataModel);
             firstSolution.SetId(GiveId());

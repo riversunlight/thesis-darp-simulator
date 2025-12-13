@@ -51,7 +51,7 @@ namespace Simulator.Objects.Data_Objects.Routing
             //Creates two available vehicles to be able to perform flexible routing for the pdtwdatamodel
             for (int i = 0; i < numberVehicles; i++)
             {
-                var vehicle = new Vehicle(simulation.Params.VehicleSpeed, simulation.Params.VehicleCapacity,simulation.Context.Depot,simulation.Context.Depot);
+                var vehicle = new Vehicle(simulation.Params.VehicleSpeed, simulation.Params.VehicleCapacity, simulation.Context.Depot, simulation.Context.Depot);
                 dataModelVehicles.Add(vehicle);
                 startDepotsArrivalTime.Add(0);//startDepotArrival time  = 0 for all the vehicles
             }

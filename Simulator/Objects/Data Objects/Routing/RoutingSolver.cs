@@ -279,17 +279,17 @@ namespace Simulator.Objects.Data_Objects.Routing
             GA ga_td = new GA(RoutingModel, RoutingIndexManager, DataModel);
             GA ga_tdt = new GA(RoutingModel, RoutingIndexManager, DataModel);
             GA ga_half = new GA(RoutingModel, RoutingIndexManager, DataModel);
-            ga_td.TryGetSolution("PreExpSingleMulti_GA_TD.csv", "GA_TD", "Viana");
-            nsga.TryGetSolution("PreExpSingleMulti_NSGA.csv", "NSGA_TDTDT", "Viana");
-            ga_tdt.TryGetSolution("PreExpSingleMulti_GA_TDT.csv", "GA_TDT", "Viana");
-            ga_half.TryGetSolution("PreExpSingleMulti_GA_HALF.csv", "GA_HALF", "Viana");
+            ga_td.TryGetSolution("PreExpSingleMulti_GA_TD.csv", "GA_TD", "Viana", "Single", "Single");
+            nsga.TryGetSolution("PreExpSingleMulti_NSGA.csv", "NSGA_TDTDT", "Viana", "Single", "Single");
+            ga_tdt.TryGetSolution("PreExpSingleMulti_GA_TDT.csv", "GA_TDT", "Viana", "Single", "Single");
+            ga_half.TryGetSolution("PreExpSingleMulti_GA_HALF.csv", "GA_HALF", "Viana", "Single", "Single");
 
         }
 
         public void PreExpDebug()
         {
             NSGA nsga = new NSGA(RoutingModel, RoutingIndexManager, DataModel);
-            nsga.TryGetSolution("VianaFast.csv", "NSGA_TDTDT", "VianaFast");
+            nsga.TryGetSolution("VianaFast.csv", "NSGA_TDTDT", "VianaFast", "Single", "Single");
         }
 
         public void PreExpInsert()
@@ -298,23 +298,62 @@ namespace Simulator.Objects.Data_Objects.Routing
             bi.TryGetSolution("BestInsert.csv", "NSGA_TDTDT", "?");
 
             NSGA nsga = new NSGA(RoutingModel, RoutingIndexManager, DataModel);
-            nsga.TryGetSolution("Insert_NSGA.csv", "NSGA_TDTDT", "VianaFast"); 
+            nsga.TryGetSolution("Insert_NSGA.csv", "NSGA_TDTDT", "VianaFast", "Single", "Single"); 
 
             RandomAlgo ra = new RandomAlgo(RoutingModel, RoutingIndexManager, DataModel);
-            ra.TryGetSolution("Insert_Random.csv", "NSGA_TDTDT", "?");
+            ra.TryGetSolution("Insert_Random.csv", "NSGA_TDTDT", "?", "Single", "Single");
         }
 
         public void PreExpRideNum()
         {
             NSGA nsga1 = new NSGA(RoutingModel, RoutingIndexManager, DataModel);
-            nsga1.TryGetSolution("RideTD.csv", "NSGA_TDCUML", "VianaFast");
+            nsga1.TryGetSolution("RideTD2.csv", "NSGA_TDCUML", "VianaFast", "Single", "Single");
 
             NSGA nsga2 = new NSGA(RoutingModel, RoutingIndexManager, DataModel);
-            nsga2.TryGetSolution("RideTDT.csv", "NSGA_TDTCUML", "VianaFast");
+            //nsga2.TryGetSolution("RideTDT2.csv", "NSGA_TDTCUML", "VianaFast", "Single", "Single");
+
 
         }
 
+        public void PreExpMulti()
+        {
+            NSGA nsga1 = new NSGA(RoutingModel, RoutingIndexManager, DataModel);
+            nsga1.TryGetSolution("Multi.csv", "NSGA_MULTITD", "Multi", "Multi", "Multi");
+        }
 
+        public void PreExpTri()
+        {
+            //NSGA single = new NSGA(RoutingModel, RoutingIndexManager, DataModel);
+
+            NSGA multi = new NSGA(RoutingModel, RoutingIndexManager, DataModel);
+
+            //single.TryGetSolution("Triple.csv", "NSGA_TRIPLE", "VianaFast", "Single", "Single");
+            multi.TryGetSolution("TripleRide.csv", "NSGA_CAR_LENGTH_RIDE", "Multi", "Multi", "Multi");
+
+            int[] val = { 4, 8, 15, 20, 30 };
+            for (int i = 0; i < 5; i++) {
+                NSGA constance = new NSGA(RoutingModel, RoutingIndexManager, DataModel);
+                constance.SetUpConstraint(val[i], long.MaxValue, long.MaxValue);
+                constance.TryGetSolution("ConstTriple" + val[i] + ".csv", "NSGA_CONST_LENGTH", "CONST", "CONST", "Const");
+            }
+        }
+
+        public void ExpTri30_Length_RideNum()
+        {
+            //NSGA single = new NSGA(RoutingModel, RoutingIndexManager, DataModel);
+
+            NSGA multi = new NSGA(RoutingModel, RoutingIndexManager, DataModel);
+
+            //single.TryGetSolution("Triple.csv", "NSGA_TRIPLE", "VianaFast", "Single", "Single");
+            multi.TryGetSolution("TripleRide.csv", "NSGA_CAR_LENGTH_RIDE", "Multi", "Multi", "Multi");
+
+            //for (int i = 1; i < 30; i++)
+            //{
+            //    NSGA constance = new NSGA(RoutingModel, RoutingIndexManager, DataModel);
+            //    constance.SetUpConstraint(i, long.MaxValue, long.MaxValue);
+            //    constance.TryGetSolution("ConstTriple" + i + ".csv", "NSGA_CONST_LENGTH", "CONST", "CONST", "Const");
+            //}
+        }
 
         public Assignment TryGetSolution(RoutingSearchParameters searchParameters)
         {
@@ -326,13 +365,13 @@ namespace Simulator.Objects.Data_Objects.Routing
             }
             //for loop that tries to find the earliest feasible solution (trying to minimize the maximum upper bound) within a maximum delay delivery time (upper bound), using the current customer requests
             //for (int currentMaximumDelayTime = 0; currentMaximumDelayTime < DataModel.MaxAllowedDeliveryDelayTime; currentMaximumDelayTime = currentMaximumDelayTime + 60) //iterates adding 1 minute to maximum allowed timeWindow (60 seconds) if a feasible solution isnt found for the current upperbound
-            for (int currentMaximumDelayTime = 0; currentMaximumDelayTime < DataModel.MaxAllowedDeliveryDelayTime; currentMaximumDelayTime = currentMaximumDelayTime + 60) //iterates adding 1 minute to maximum allowed timeWindow (60 seconds) if a feasible solution isnt found for the current upperbound
-            {
-                MaximumDeliveryDelayTime = currentMaximumDelayTime;
+            //for (int currentMaximumDelayTime = 0; currentMaximumDelayTime < DataModel.MaxAllowedDeliveryDelayTime; currentMaximumDelayTime = currentMaximumDelayTime + 60) //iterates adding 1 minute to maximum allowed timeWindow (60 seconds) if a feasible solution isnt found for the current upperbound
+            //{
+                //MaximumDeliveryDelayTime = currentMaximumDelayTime;
                 Init();
                 //Get the solution of the problem
-                try
-                {
+                //try
+                //{
                     using (StreamWriter writer = new StreamWriter("stops.csv", append: false))
                     {
                         foreach (Stop stop in DataModel.IndexManager.Stops)
@@ -360,9 +399,9 @@ namespace Simulator.Objects.Data_Objects.Routing
                     //mysolution2 = gaSolver.TryGetSolution();
                     //NSGA nsgaSolver = new NSGA(RoutingModel, RoutingIndexManager, DataModel);
                     //mysolution3 = nsgaSolver.TryGetSolution();
-
+                    
                     // Call Experiment Data
-                    PreExpRideNum();
+                    ExpTri30_Length_RideNum();
                     
                     Console.WriteLine("Finish!");
                     Thread.Sleep(20000);
@@ -370,18 +409,18 @@ namespace Simulator.Objects.Data_Objects.Routing
                     //solution = RoutingModel.SolveWithParameters(searchParameters);
                     
 
-                }
-                catch (Exception)
-                {
+                //}
+                //catch (Exception)
+                //{
                     solution = null;
 
-                }
+                //}
 
                 if (solution != null) //if true, solution was found, breaks the cycle
                 {
-                    break;
+                    //break;
                 }
-            }
+            //}
 
             Console.WriteLine("Solver status:" + GetSolverStatus());
             return solution; //retuns null if no solution is found, otherwise returns the solution

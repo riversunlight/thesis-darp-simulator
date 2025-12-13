@@ -275,6 +275,7 @@ namespace Simulator.Objects.Data_Objects.Routing
             return vehicleCapacities;
         }
 
+        // CHECK: 2点間の移動距離生成のところ
         public long[,] GetTimeMatrix(bool useHaversineDistanceFormula)
         {
             return new MatrixBuilder().GetTimeMatrix(Stops, Vehicles[0].Speed, useHaversineDistanceFormula); //gets the time matrix using the same stop indexing of the indexmanager

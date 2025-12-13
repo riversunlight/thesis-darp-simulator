@@ -70,7 +70,8 @@ namespace Simulator.Objects.Data_Objects
             _baseDirectoryPath= Directory
                 .GetParent(Directory.GetParent(Directory.GetParent(Environment.CurrentDirectory).FullName).FullName)
                 .FullName;
-            var stopsPath = Path.Combine(_baseDirectoryPath, @"Data Files\stops.txt"); //files from google transit (GTFS file)
+            //var stopsPath = Path.Combine(_baseDirectoryPath, @"Data Files\stops.txt"); //files from google transit (GTFS file)
+            var stopsPath = Path.Combine(_baseDirectoryPath, @"Data Files\tsukuba_stops.txt"); //files from google transit (GTFS file)
             var routesPath = Path.Combine(_baseDirectoryPath, @"Data Files\routes.txt"); //files from google transit (GTFS file)
             var demandsPath = Path.Combine(_baseDirectoryPath, @"Data Files\demands.csv");
             var stopTimesPath =
@@ -86,42 +87,42 @@ namespace Simulator.Objects.Data_Objects
             LoadStops(stopsData);
             var demandsData = GenerateListData(demandsPath);
             var stopTimesDataList = GenerateListData(stopTimesPath);
-            FileDataExporter dataExporter = new FileDataExporter();
-
-            if (!File.Exists(tripStopsPath)
-                ) //if the file doesn't exists, generate the dictionary required to sort the stops in ascending order then export to txt, then reads from the txt the next time the program is executed (to save computational time)
-                {
-                  
-                    var tripsStopTupleDictionary = GenerateTripStopTuplesDictionary(stopTimesDataList);
-                    dataExporter.ExportTripStops(tripsStopTupleDictionary,tripStopsPath);
-                }
-                FileDataReader fdr = new FileDataReader();
-                var tripsStopData = fdr.ImportData(tripStopsPath, ',',true);
-                LoadStopsIntoTrips(tripsStopData);  
-                LoadTripStartTimes(tripsStopData);
-                AssignUrbanStops();
-                //dataExporter.ExportStops(Stops, Path.Combine(Environment.CurrentDirectory, @"stops.txt"));
-                //dataExporter.ExportTrips(Routes, Path.Combine(Environment.CurrentDirectory, @"trips.txt"));
-                //dataExporter.ExportTripStopSequence(Routes, Path.Combine(Environment.CurrentDirectory, @"trip_stops.txt"));
-                //dataExporter.ExportTripStartTimes(Routes, Path.Combine(Environment.CurrentDirectory, @"trip_start_times.txt"));
-            if (_urbanOnly)
-            {
-                Routes = Routes.FindAll(r => r.UrbanRoute); // only urban routes
-                Trips = Trips.FindAll(t => t.Route.UrbanRoute == true); // only urban trips
-                Stops = Stops.FindAll(s => s.IsUrban); //only urban stops
-            }
-            
-            LoadStopDemands(demandsData);
-            RemoveDuplicateTrips();
-            watch.Stop();
-            var elapsedMs = watch.ElapsedMilliseconds;
-            Console.WriteLine(this+"All the necessary data was successfully generated in "+elapsedMs*0.001+" seconds.");
-            string str;
-            str = _urbanOnly ? "Urban " : "";
-            Console.WriteLine(this+"Total of "+str+"Routes:"+Routes.Count);
-            Console.WriteLine(this+"Total of "+str+"Route Trips:"+Routes.Sum(r=>r.Trips.Count));
-            Console.WriteLine(this+"Total of "+str+"Stops:"+Stops.Count);
-        
+            //FileDataExporter dataExporter = new FileDataExporter();
+            //
+            //if (!File.Exists(tripStopsPath)
+            //    ) //if the file doesn't exists, generate the dictionary required to sort the stops in ascending order then export to txt, then reads from the txt the next time the program is executed (to save computational time)
+            //    {
+            //      
+            //        var tripsStopTupleDictionary = GenerateTripStopTuplesDictionary(stopTimesDataList);
+            //        dataExporter.ExportTripStops(tripsStopTupleDictionary,tripStopsPath);
+            //    }
+            //    FileDataReader fdr = new FileDataReader();
+            //    var tripsStopData = fdr.ImportData(tripStopsPath, ',',true);
+            //    LoadStopsIntoTrips(tripsStopData);  
+            //    LoadTripStartTimes(tripsStopData);
+            //    AssignUrbanStops();
+            //    //dataExporter.ExportStops(Stops, Path.Combine(Environment.CurrentDirectory, @"stops.txt"));
+            //    //dataExporter.ExportTrips(Routes, Path.Combine(Environment.CurrentDirectory, @"trips.txt"));
+            //    //dataExporter.ExportTripStopSequence(Routes, Path.Combine(Environment.CurrentDirectory, @"trip_stops.txt"));
+            //    //dataExporter.ExportTripStartTimes(Routes, Path.Combine(Environment.CurrentDirectory, @"trip_start_times.txt"));
+            //if (_urbanOnly)
+            //{
+            //    Routes = Routes.FindAll(r => r.UrbanRoute); // only urban routes
+            //    Trips = Trips.FindAll(t => t.Route.UrbanRoute == true); // only urban trips
+            //    Stops = Stops.FindAll(s => s.IsUrban); //only urban stops
+            //}
+            //
+            //LoadStopDemands(demandsData);
+            //RemoveDuplicateTrips();
+            //watch.Stop();
+            //var elapsedMs = watch.ElapsedMilliseconds;
+            //Console.WriteLine(this+"All the necessary data was successfully generated in "+elapsedMs*0.001+" seconds.");
+            //string str;
+            //str = _urbanOnly ? "Urban " : "";
+            //Console.WriteLine(this+"Total of "+str+"Routes:"+Routes.Count);
+            //Console.WriteLine(this+"Total of "+str+"Route Trips:"+Routes.Sum(r=>r.Trips.Count));
+            //Console.WriteLine(this+"Total of "+str+"Stops:"+Stops.Count);
+            //
         }
 
         private void RemoveDuplicateTrips()//Clears the duplicate trips (with the same start time and same stopsequence)

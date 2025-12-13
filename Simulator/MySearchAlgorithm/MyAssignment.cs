@@ -10,6 +10,7 @@ using System.Runtime.Versioning;
 using System.Linq;
 using System.Diagnostics;
 using System.Security.Cryptography;
+using MathNet.Numerics.Optimization;
 
 namespace Simulator.MySearchAlgorithm
 {
@@ -23,7 +24,7 @@ namespace Simulator.MySearchAlgorithm
 
         public List<Customer> Customers;
         public List<RouteStep> LastStep;
-        public int[] gene;
+        public List<List<int>> gene;
         public int myEvalCnt;
         public int Id;
         public static string path;
@@ -40,7 +41,7 @@ namespace Simulator.MySearchAlgorithm
             Indicators = new Dictionary<int, long>();
             Customers = new List<Customer>();
             LastStep  = new List<RouteStep>();
-            gene = new int[customer_num * 2];
+            gene = new List<List<int>>();
             myEvalCnt = -1;
         }
 
@@ -57,10 +58,10 @@ namespace Simulator.MySearchAlgorithm
 
             Customers = new List<Customer>(old.Customers);
             LastStep = new List<RouteStep>(old.LastStep);
-            gene = new int[Customers.Count * 2];
-            for (int i = 0; i < gene.Length; i++)
+            gene = new List<List<int>>();
+            for (int i = 0; i < old.gene.Count; i++)
             {
-                gene[i] = old.gene[i];
+                gene.Add(new List<int>(old.gene[i]));
             }
             myEvalCnt = old.myEvalCnt;
             Id = old.Id;
@@ -96,10 +97,10 @@ namespace Simulator.MySearchAlgorithm
                 {
                     tmp += ",Object" + i;
                 }
-                for (int i = 0; i < gene.Length; i++)
-                {
-                    tmp += ",Gene" + i;
-                }
+                //for (int i = 0; i < gene.Length; i++)
+                //{
+                //    tmp += ",Gene" + i;
+                //}
                 for (int i = 0; i < Indicators.Count; i++)
                 {
                     tmp += ",Indicator" + i;
@@ -140,6 +141,37 @@ namespace Simulator.MySearchAlgorithm
                     ObjectiveFunctions[0] = ObjectiveFunctionTotalDelay();
                     ObjectiveFunctions[1] = ObjectiveFunctionMaxCumulativeLoad();
                     break;
+                case "NSGA_TDMXDT":
+                    ObjectiveFunctions[0] = ObjectiveFunctionRouteLength();
+                    ObjectiveFunctions[1] = ObjectiveFunctionMaxDelay();
+                    break;
+                case "NSGA_TDTMXDT":
+                    ObjectiveFunctions[0] = ObjectiveFunctionTotalDelay();
+                    ObjectiveFunctions[1] = ObjectiveFunctionMaxDelay();
+                    break;
+                case "NSGA_MULTITD":
+                    ObjectiveFunctions[0] = ObjectiveFunctionRouteLength();
+                    ObjectiveFunctions[1] = ObjectiveFunctionVehicleNum();
+                    break;
+                case "NSGA_TRIPLE":
+                    ObjectiveFunctions[0] = ObjectiveFunctionRouteLength();
+                    ObjectiveFunctions[1] = ObjectiveFunctionTotalDelay();
+                    ObjectiveFunctions[2] = ObjectiveFunctionTotalWait();
+                    break;
+                case "NSGA_CAR_LENGTH_WAIT":
+                    ObjectiveFunctions[0] = ObjectiveFunctionVehicleNum();
+                    ObjectiveFunctions[1] = ObjectiveFunctionRouteLength();
+                    ObjectiveFunctions[2] = ObjectiveFunctionMaxWait();
+                    break;
+                case "NSGA_CAR_LENGTH_RIDE":
+                    ObjectiveFunctions[0] = ObjectiveFunctionVehicleNum();
+                    ObjectiveFunctions[1] = ObjectiveFunctionRouteLength();
+                    ObjectiveFunctions[2] = ObjectiveFunctionMaxCumulativeLoad();
+                    break;
+                case "NSGA_CONST_LENGTH":
+                    ObjectiveFunctions[0] = ObjectiveFunctionVehicleNum();
+                    ObjectiveFunctions[1] = ObjectiveFunctionRouteLength();
+                    break;
                 default:
                     ObjectiveFunctions[0] = ObjectiveFunctionFinishTime();
                     ObjectiveFunctions[1] = ObjectiveFunctionDryRun();
@@ -156,6 +188,9 @@ namespace Simulator.MySearchAlgorithm
             Indicators[4] = ObjectiveFunctionFinishTime();
             Indicators[5] = ObjectiveFunctionVehicleWait();
             Indicators[6] = ObjectiveFunctionMaxCumulativeLoad();
+            Indicators[7] = ObjectiveFunctionMaxDelay();
+            Indicators[8] = ObjectiveFunctionMaxWait();
+            Indicators[9] = ObjectiveFunctionVehicleNum();
         }
 
 
@@ -169,30 +204,29 @@ namespace Simulator.MySearchAlgorithm
             evalCnt++;
             myEvalCnt = evalCnt;
             Customers = new List<Customer>();
+            gene.RemoveAll(genev => genev == null || genev.Count == 0);
+
             foreach (var customer in DataModel.IndexManager.Customers)
             {
                 Customers.Add(new Customer(customer));
             }
             int[] alreadyGetOn = new int[Customers.Count];
             int vehicleCnt = 0;
-            VehicleRoutes[vehicleCnt] = new List<RouteStep>();
-            for (int i = 0; i < gene.Length; i++)
+            for (int i = 0; i < gene.Count; i++)
             {
-                if (gene[i] == -1)
-                {
-                    if (i != 0 && gene[i - 1] != -1 && i != gene.Length - 1 && gene[i + 1] != -1) {
-                        vehicleCnt++;
-                        VehicleRoutes[vehicleCnt] = new List<RouteStep>();
-                    }
-                    continue;
+                if (gene[i].Count == 0) continue;
+                VehicleRoutes[vehicleCnt] = new List<RouteStep>();
+                for (int j = 0; j < gene[i].Count; j++) {
+                    
+                    VehicleRoutes[vehicleCnt].Add(new RouteStep(gene[i][j]));
                 }
-                VehicleRoutes[vehicleCnt].Add(new RouteStep(gene[i]));
+                vehicleCnt++;
             }
 
             for (int i = 0; i < Customers.Count; i++)
             {
-                int convertStopId = ConvertIndex2LStopId(VehicleRoutes.Count, 2*i);
-                int convertStopId2 = ConvertIndex2LStopId(VehicleRoutes.Count, 2 * i + 1);
+                int convertStopId = ConvertIndex2LStopId(1, 2*i);
+                int convertStopId2 = ConvertIndex2LStopId(1, 2 * i + 1);
 
                 int travelTime = (int)DataModel.TravelTimes[convertStopId, convertStopId2];
                 //Debug.Assert(travelTime == Customers[i].DesiredTimeWindow[1] - Customers[i].DesiredTimeWindow[0]);
@@ -203,7 +237,7 @@ namespace Simulator.MySearchAlgorithm
                 List<RouteStep> routeSteps = vehicleRoute.Value;
                 int currentTime = 0; // シミュレーション開始時刻
                 int currentLoad = 0; // 現在の車両の負荷
-                int previousStopId = DataModel.Starts[vehicleId];
+                int previousStopId = DataModel.Starts[0];
 
                 for (int i = 0; i < routeSteps.Count; i++)
                 {
@@ -214,7 +248,7 @@ namespace Simulator.MySearchAlgorithm
                     int pickupDelivery = currentStep.PickupOrDelivery;
                     //int nextStopId = DataModel.IndexManager.Stops[ConvertIndex2LStopId(VehicleRoutes.Count, currentStep.NodeIndex)].Id;
 
-                    int convertStopId = ConvertIndex2LStopId(VehicleRoutes.Count, currentStep.NodeIndex);
+                    int convertStopId = ConvertIndex2LStopId(1, currentStep.NodeIndex);
                     int travelTime = (int)DataModel.TravelTimes[previousStopId, convertStopId];
                     currentTime += travelTime;
                     currentStep.ArrivalTime = currentTime;
@@ -253,7 +287,7 @@ namespace Simulator.MySearchAlgorithm
                 }
 
                 LastStep.Add(new RouteStep(vehicleId));
-                int backTime = (int)DataModel.TravelTimes[previousStopId, DataModel.Ends[vehicleId]];
+                int backTime = (int)DataModel.TravelTimes[previousStopId, DataModel.Ends[0]];
                 currentTime += backTime;
                 LastStep[LastStep.Count - 1].ArrivalTime = currentTime;
 
@@ -335,7 +369,26 @@ namespace Simulator.MySearchAlgorithm
             }
             return res;
         }
-        
+
+        public long ObjectiveFunctionMaxDelay() // 遅延時間: MXDT
+        {
+            long res = 0;
+            for (int customerId = 0; customerId < Customers.Count; customerId++)
+            {
+                if (Customers[customerId].DelayTime > res) res = Customers[customerId].DelayTime;
+            }
+            return res;
+        }
+        public long ObjectiveFunctionMaxWait() // 待ち時間: MXWT
+        {
+            long res = 0;
+            for (int customerId = 0; customerId < Customers.Count; customerId++)
+            {
+                if (Customers[customerId].WaitTime > res) res = Customers[customerId].WaitTime;
+            }
+            return res;
+        }
+
         // 車両が停留所で乗客を待っている時間
         public long ObjectiveFunctionVehicleWait()
         {
@@ -366,6 +419,32 @@ namespace Simulator.MySearchAlgorithm
                 }
 
             }
+            return res;
+        }
+        public long ObjectiveFunctionVehicleNum() // 車両台数
+        {
+            return VehicleRoutes.Count;
+        }
+
+        public long ConstraintCheck(int max_ride, int max_delay, int max_wait) // 比較アルゴリズム使用: 
+        {
+            long res = -1; // 違反なし
+            if (ObjectiveFunctionMaxCumulativeLoad() > max_ride)
+            {
+                res = 1;
+            }
+
+            if (ObjectiveFunctionMaxDelay() > max_delay)
+            {
+                res = 1;
+            }
+
+            if (ObjectiveFunctionMaxWait() > max_wait)
+            {
+                res = 1;
+            }
+
+
             return res;
         }
 
@@ -457,13 +536,13 @@ namespace Simulator.MySearchAlgorithm
                     List<RouteStep> routeSteps = VehicleRoutes[vehicleId];
 
                     writer.WriteLine("stepId,stopId,requestID, pickupOrDelivery,ArrivalTime,DepatureTime, CumulativeLoad");
-                    writer.WriteLine("-1" + "," + dataModel.IndexManager.Stops[dataModel.Starts[vehicleId]].Id + "," + -1 + "," + -1 + "," +  0 + "," + 0 + "," + 0);
+                    writer.WriteLine("-1" + "," + dataModel.IndexManager.Stops[dataModel.Starts[0]].Id + "," + -1 + "," + -1 + "," +  0 + "," + 0 + "," + 0);
                     for (int stepId = 0; stepId < routeSteps.Count; stepId++)
                     {
                         RouteStep currentStep = routeSteps[stepId];
                         writer.WriteLine("" +stepId + "," + Customers[currentStep.RequestID].PickupDelivery[currentStep.PickupOrDelivery].Id + "," + currentStep.RequestID + "," + currentStep.PickupOrDelivery + "," +  currentStep.ArrivalTime + "," + currentStep.DepatureTime + "," + currentStep.CumulativeLoad);
                     }
-                    writer.WriteLine("-2" + "," + dataModel.IndexManager.Stops[dataModel.Ends[vehicleId]].Id + "," + -2 + "," + -1 + "," + LastStep[vehicleId].ArrivalTime + "," + LastStep[vehicleId].DepatureTime + "," + LastStep[vehicleId].CumulativeLoad);
+                    writer.WriteLine("-2" + "," + dataModel.IndexManager.Stops[dataModel.Ends[0]].Id + "," + -2 + "," + -1 + "," + LastStep[vehicleId].ArrivalTime + "," + LastStep[vehicleId].DepatureTime + "," + LastStep[vehicleId].CumulativeLoad);
                 }
                 writer.WriteLine("Customer Info:");
 
@@ -500,10 +579,10 @@ namespace Simulator.MySearchAlgorithm
                 {
                     tmp += "," + ObjectiveFunctions[i];
                 }
-                for (int i = 0; i < gene.Length; i++)
-                {
-                    tmp += "," + gene[i];
-                }
+                // for (int i = 0; i < gene.Length; i++)
+                // {
+                //     tmp += "," + gene[i,0];
+                // }
                 for (int i = 0; i < Indicators.Count; i++)
                 {
                     tmp += "," + Indicators[i];

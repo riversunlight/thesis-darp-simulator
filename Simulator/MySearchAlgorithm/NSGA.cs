@@ -156,10 +156,13 @@ namespace Simulator.MySearchAlgorithm
         }
 
 
-        public override MyAssignment TryGetSolution(string path, string objCase, string _crossOver)
+        public override MyAssignment TryGetSolution(string path, string objCase, string _crossOver, string _mutateKind, string _initialKind)
         {
             sw = Stopwatch.StartNew();
             crossOverKind = _crossOver;
+            mutateKind = _mutateKind;
+            initialKind = _initialKind;
+
 
             MyAssignment dummy = new MyAssignment(0);
             dummy.setPath(path);
